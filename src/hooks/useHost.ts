@@ -289,7 +289,7 @@ export function useHost(
               }
 
               // Update the player's peerId and connection mapping so future
-              // messages (question, reveal, scoreboard, etc.) reach the new socket.
+              // messages (question, reveal, answer_summary, etc.) reach the new socket.
               if (player.peerId !== conn.peer) {
                 connectionsRef.current.delete(player.peerId);
                 player.peerId = conn.peer;

@@ -6,9 +6,10 @@ interface ScoreboardProps {
   currentPlayerName?: string;
   showPodium?: boolean;
   title?: string;
+  anonymous?: boolean;
 }
 
-function Scoreboard({ standings, currentPlayerName, showPodium = false, title }: ScoreboardProps) {
+function Scoreboard({ standings, currentPlayerName, showPodium = false, title, anonymous = false }: ScoreboardProps) {
   if (standings.length === 0) {
     return (
       <div className="scoreboard">
@@ -34,10 +35,10 @@ function Scoreboard({ standings, currentPlayerName, showPodium = false, title }:
 
       {showPodium && podiumOrder.length > 0 && (
         <div className="podium">
-          {podiumOrder.map((player) => (
-            <div key={player.name} className="podium-place">
+          {podiumOrder.map((player, idx) => (
+            <div key={anonymous ? `anon-${idx}` : player.name} className="podium-place">
               <span className="podium-badge">{podiumBadges[player.rank] || ''}</span>
-              <span className="podium-name">{player.name}</span>
+              {!anonymous && <span className="podium-name">{player.name}</span>}
               <span className="podium-score">{player.score} pts</span>
               <div className="podium-bar" />
             </div>
@@ -47,16 +48,16 @@ function Scoreboard({ standings, currentPlayerName, showPodium = false, title }:
 
       {rest.length > 0 && (
         <ul className="standings-list">
-          {rest.map((player) => {
-            const isCurrentPlayer = currentPlayerName !== undefined
+          {rest.map((player, idx) => {
+            const isCurrentPlayer = !anonymous && currentPlayerName !== undefined
               && player.name.toLowerCase() === currentPlayerName.toLowerCase();
             return (
               <li
-                key={player.name}
+                key={anonymous ? `anon-${idx}` : player.name}
                 className={`standings-item${isCurrentPlayer ? ' standings-item--highlight' : ''}`}
               >
                 <span className="standings-rank">#{player.rank}</span>
-                <span className="standings-name">{player.name}</span>
+                {!anonymous && <span className="standings-name">{player.name}</span>}
                 <span className="standings-score">{player.score} pts</span>
               </li>
             );

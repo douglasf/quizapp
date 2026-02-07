@@ -1,6 +1,6 @@
 /* ==========================================================================
    HostPage — consolidated styles for all host phases
-   (lobby, question, answer_reveal, scoreboard, finished)
+   (lobby, question, answer_reveal, answer_summary, finished)
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -345,7 +345,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   Game Phase (Question + Answer Reveal + Scoreboard)
+   Game Phase (Question + Answer Reveal + Answer Summary)
    -------------------------------------------------------------------------- */
 
 .host-game {
@@ -519,9 +519,80 @@
   background-color: var(--color-success-dark);
 }
 
-/* Scoreboard phase */
-.host-scoreboard-section {
+/* Answer Summary phase */
+.answer-summary-section {
   margin-bottom: 1.5rem;
+}
+
+.answer-summary-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 1rem;
+}
+
+.answer-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.answer-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+}
+
+.answer-summary-item--correct {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.answer-summary-item--wrong {
+  background-color: var(--color-error-bg);
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.answer-summary-result {
+  font-size: 1.25rem;
+  font-weight: 800;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.answer-summary-item--correct .answer-summary-result {
+  color: var(--color-success-darker);
+}
+
+.answer-summary-item--wrong .answer-summary-result {
+  color: var(--color-error);
+}
+
+.answer-summary-name {
+  flex: 1;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.answer-summary-points {
+  font-family: var(--font-display);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Host Anonymous Standings (toggle on answer_summary screen) */
+.host-anonymous-standings {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--color-bg-card);
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
 }
 
 /* --------------------------------------------------------------------------

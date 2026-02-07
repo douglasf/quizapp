@@ -9,7 +9,7 @@ import './PlayerGame.css';
 const ANSWER_COLORS = ['answer-btn--red', 'answer-btn--blue', 'answer-btn--yellow', 'answer-btn--green'] as const;
 const ANSWER_LABELS = ['A', 'B', 'C', 'D'] as const;
 
-type PlayerPhase = 'waiting' | 'answering' | 'submitted' | 'reveal' | 'scoreboard' | 'finished';
+type PlayerPhase = 'waiting' | 'answering' | 'submitted' | 'reveal' | 'finished';
 
 interface RevealData {
   correctIndex: number;
@@ -79,7 +79,8 @@ function PlayerGame() {
           lobby: 'waiting',
           question: 'waiting', // will be overridden when question message arrives
           answer_reveal: 'waiting',
-          scoreboard: 'scoreboard',
+          scoreboard: 'waiting',
+          answer_summary: 'waiting',
           finished: 'finished',
         };
         const mappedPhase = phaseMap[msg.phase] ?? 'waiting';
@@ -113,11 +114,6 @@ function PlayerGame() {
           scoreGained: msg.scoreGained,
         });
         setPhase('reveal');
-        break;
-      }
-      case 'scoreboard': {
-        setStandings(msg.standings);
-        setPhase('scoreboard');
         break;
       }
       case 'game_over': {
@@ -273,7 +269,7 @@ function PlayerGame() {
               <h1 className="player-question-text">{currentQuestion.text}</h1>
             </div>
 
-            <div className="answer-grid">
+            <div className="answer-grid answer-grid--reveal">
               {currentQuestion.options.map((option, idx) => {
                 let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
                 const isCorrectAnswer = idx === revealData.correctIndex;
@@ -304,18 +300,6 @@ function PlayerGame() {
             <div className={`points-display ${revealData.scoreGained > 0 ? 'points-display--positive' : 'points-display--zero'}`}>
               {revealData.scoreGained > 0 ? `+${revealData.scoreGained} points!` : '0 points'}
             </div>
-          </div>
-        )}
-
-        {/* Scoreboard phase */}
-        {phase === 'scoreboard' && (
-          <div className="player-scoreboard-section">
-            <Scoreboard
-              standings={standings}
-              currentPlayerName={playerData.playerName}
-              showPodium
-              title="Current Standings"
-            />
           </div>
         )}
 

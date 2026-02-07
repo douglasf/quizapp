@@ -7,6 +7,7 @@ import { useHostUrl } from '../hooks/useHostUrl';
 import { generateGameCode } from '../utils/gameCode';
 import Scoreboard from './Scoreboard';
 import type { Quiz } from '../types/quiz';
+import type { AnswerSummaryResult } from '../types/game';
 import './HostPage.css';
 
 const IMPORTED_QUIZ_KEY = 'quizapp_imported_quiz';
@@ -15,7 +16,7 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'] as const;
 
 /**
  * HostPage — single component managing the entire host flow:
- *   lobby → question → answer_reveal → scoreboard → finished
+ *   lobby → question → answer_reveal → answer_summary → finished
  *
  * This prevents PeerJS connection loss that would occur if we navigated
  * between separate route components (each would create a new peer).
@@ -25,13 +26,14 @@ function HostPage() {
   const [copied, setCopied] = useState(false);
   const [initialGameCode] = useState(() => generateGameCode());
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [showAnonymousStandingsModal, setShowAnonymousStandingsModal] = useState(false);
 
   const {
     state,
     initGame,
     startQuiz,
     revealAnswer,
-    showScoreboard,
+    showAnswerSummary,
     nextQuestion,
     finishGame,
     getCorrectAnswerIndex,
@@ -39,6 +41,7 @@ function HostPage() {
 
   const currentQuestionIndexRef = useRef(state.currentQuestionIndex);
   const phaseRef = useRef(state.phase);
+  const lastRevealResultsRef = useRef<AnswerSummaryResult[]>([]);
 
   // Keep refs in sync with state
   currentQuestionIndexRef.current = state.currentQuestionIndex;
@@ -233,6 +236,8 @@ function HostPage() {
 
     // Compute and apply scores using useHost's answer data (for ALL players who answered)
     const answers = getAnswers(state.currentQuestionIndex);
+    const revealResults: AnswerSummaryResult[] = [];
+
     for (const player of players.values()) {
       const playerAnswer = answers.get(player.name.trim().toLowerCase());
       const isCorrect = playerAnswer !== undefined && playerAnswer === currentQuestion.correctIndex;
@@ -242,8 +247,24 @@ function HostPage() {
         updatePlayerScore(player.name, 100);
       }
 
-      // Only send reveal message to connected players
+      // Track results for answer summary
+      revealResults.push({
+        name: player.name,
+        correct: isCorrect,
+        scoreGained: isCorrect ? 100 : 0,
+      });
+    }
+
+    // Store results for later use by handleShowAnswerSummary
+    lastRevealResultsRef.current = revealResults;
+
+    // Send personalized answer_reveal to each connected player
+    for (const player of players.values()) {
       if (!player.connected) continue;
+
+      const playerAnswer = answers.get(player.name.trim().toLowerCase());
+      const isCorrect = playerAnswer !== undefined && playerAnswer === currentQuestion.correctIndex;
+
       sendToPlayer(player.name, {
         type: 'answer_reveal',
         questionIndex: state.currentQuestionIndex,
@@ -255,18 +276,13 @@ function HostPage() {
     }
   }, [quiz, currentQuestion, revealAnswer, players, getAnswers, state.currentQuestionIndex, sendToPlayer, updatePlayerScore]);
 
-  const handleShowScoreboard = useCallback(() => {
-    showScoreboard();
-
-    // Use `standings` (already computed from players via useMemo above)
-    broadcast({
-      type: 'scoreboard',
-      standings,
-    });
-  }, [showScoreboard, standings, broadcast]);
+  const handleShowAnswerSummary = useCallback(() => {
+    showAnswerSummary();
+  }, [showAnswerSummary]);
 
   const handleNextQuestion = useCallback(() => {
     nextQuestion();
+    setShowAnonymousStandingsModal(false);
 
     const nextIndex = state.currentQuestionIndex + 1;
     const nextQ = quiz?.questions[nextIndex];
@@ -283,6 +299,7 @@ function HostPage() {
 
   const handleFinishGame = useCallback(() => {
     finishGame();
+    setShowAnonymousStandingsModal(false);
 
     broadcast({
       type: 'game_over',
@@ -493,8 +510,8 @@ function HostPage() {
               </button>
             )}
             {state.phase === 'answer_reveal' && (
-              <button type="button" className="btn btn-primary" onClick={handleShowScoreboard}>
-                Show Scoreboard
+              <button type="button" className="btn btn-primary" onClick={handleShowAnswerSummary}>
+                Who Got It Right?
               </button>
             )}
           </div>
@@ -503,17 +520,51 @@ function HostPage() {
     );
   }
 
-  // ─── Render: Scoreboard ───
+  // ─── Render: Answer Summary ───
 
-  if (state.phase === 'scoreboard') {
+  if (state.phase === 'answer_summary') {
+    // Sort results: correct first (alphabetical), then incorrect (alphabetical)
+    const sortedResults = [...lastRevealResultsRef.current].sort((a, b) => {
+      if (a.correct !== b.correct) return a.correct ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
     return (
       <div className="page host-game">
         <div className="host-game-container">
-          <div className="host-scoreboard-section">
-            <Scoreboard standings={standings} showPodium title="Standings" />
+          <div className="answer-summary-section">
+            <h2 className="answer-summary-title">Who Got It Right?</h2>
+            <div className="answer-summary-list">
+              {sortedResults.map((result) => (
+                <div
+                  key={result.name}
+                  className={`answer-summary-item ${result.correct ? 'answer-summary-item--correct' : 'answer-summary-item--wrong'}`}
+                >
+                  <span className="answer-summary-result">{result.correct ? '\u2713' : '\u2717'}</span>
+                  <span className="answer-summary-name">{result.name}</span>
+                  <span className="answer-summary-points">+{result.scoreGained} pts</span>
+                </div>
+              ))}
+            </div>
           </div>
 
+          {showAnonymousStandingsModal && (
+            <div className="host-anonymous-standings">
+              <Scoreboard
+                standings={standings.map(s => ({ name: '', score: s.score, rank: s.rank }))}
+                anonymous
+              />
+            </div>
+          )}
+
           <div className="host-game-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowAnonymousStandingsModal(!showAnonymousStandingsModal)}
+            >
+              {showAnonymousStandingsModal ? 'Hide' : 'Show'} Anonymous Standings
+            </button>
             {!isLastQuestion ? (
               <button type="button" className="btn btn-next" onClick={handleNextQuestion}>
                 Next Question

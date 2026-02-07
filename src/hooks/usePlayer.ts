@@ -125,7 +125,7 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
         break;
       }
 
-      // player_list, answer_ack, answer_reveal, scoreboard, game_over
+      // player_list, answer_ack, answer_reveal, answer_summary, game_over
       // are forwarded to the external handler below
       default:
         break;

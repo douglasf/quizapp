@@ -17,7 +17,7 @@ export type HostMessage =
   | { type: 'question'; index: number; total: number; text: string; options: [string, string, string, string] }
   | { type: 'answer_ack'; questionIndex: number }
   | { type: 'answer_reveal'; questionIndex: number; correctIndex: number; yourAnswer: number | null; correct: boolean; scoreGained: number }
-  | { type: 'scoreboard'; standings: { name: string; score: number; rank: number }[] }
+  | { type: 'answer_summary'; results: { name: string; correct: boolean; scoreGained: number }[] }
   | { type: 'game_over'; standings: { name: string; score: number; rank: number }[] }
   | { type: 'play_again' }
   | { type: 'error'; message: string }

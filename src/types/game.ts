@@ -8,7 +8,13 @@ export interface Player {
   answeredQuestions: Set<number>;
 }
 
-export type GamePhase = 'lobby' | 'question' | 'answer_reveal' | 'scoreboard' | 'finished';
+export type GamePhase = 'lobby' | 'question' | 'answer_reveal' | 'answer_summary' | 'finished';
+
+export interface AnswerSummaryResult {
+  name: string;
+  correct: boolean;
+  scoreGained: number;
+}
 
 // Player-side minimal state
 export interface PlayerState {

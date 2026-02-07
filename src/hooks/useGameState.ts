@@ -26,7 +26,7 @@ type GameAction =
   | { type: 'INIT_GAME'; quiz: Quiz; gameCode: string }
   | { type: 'START_QUIZ' }
   | { type: 'REVEAL_ANSWER' }
-  | { type: 'SHOW_SCOREBOARD' }
+  | { type: 'SHOW_ANSWER_SUMMARY' }
   | { type: 'NEXT_QUESTION' }
   | { type: 'FINISH_GAME' };
 
@@ -74,13 +74,13 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, phase: 'answer_reveal' };
     }
 
-    case 'SHOW_SCOREBOARD': {
+    case 'SHOW_ANSWER_SUMMARY': {
       if (state.phase !== 'answer_reveal') return state;
-      return { ...state, phase: 'scoreboard' };
+      return { ...state, phase: 'answer_summary' };
     }
 
     case 'NEXT_QUESTION': {
-      if (state.phase !== 'scoreboard') return state;
+      if (state.phase !== 'answer_summary') return state;
       if (!state.quiz) return state;
 
       const nextIndex = state.currentQuestionIndex + 1;
@@ -123,7 +123,7 @@ export interface UseGameStateReturn {
   initGame: (quiz: Quiz, gameCode: string) => void;
   startQuiz: () => void;
   revealAnswer: () => void;
-  showScoreboard: () => void;
+  showAnswerSummary: () => void;
   nextQuestion: () => void;
   finishGame: () => void;
 }
@@ -155,8 +155,8 @@ export function useGameState(): UseGameStateReturn {
     dispatch({ type: 'REVEAL_ANSWER' });
   }, []);
 
-  const showScoreboard = useCallback(() => {
-    dispatch({ type: 'SHOW_SCOREBOARD' });
+  const showAnswerSummary = useCallback(() => {
+    dispatch({ type: 'SHOW_ANSWER_SUMMARY' });
   }, []);
 
   const nextQuestion = useCallback(() => {
@@ -173,7 +173,7 @@ export function useGameState(): UseGameStateReturn {
     initGame,
     startQuiz,
     revealAnswer,
-    showScoreboard,
+    showAnswerSummary,
     nextQuestion,
     finishGame,
   };
