@@ -1,4 +1,135 @@
-/* Reset & Base */
+/* Google Fonts — Poppins for playful titles, Outfit for readable body */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Outfit:wght@400;500;600;700&display=swap');
+
+/* ==========================================================================
+   CSS Variables — Pastel Palette
+   ========================================================================== */
+
+:root {
+  /* Pastel Primary Colors */
+  --color-primary: #d8b4fe;        /* Soft purple/lavender */
+  --color-primary-dark: #c084fc;   /* Darker for hover */
+  --color-primary-darker: #a855f7; /* Even darker for active/pressed */
+
+  /* Pastel Secondary (Success/Mint) */
+  --color-success: #86efac;        /* Mint green */
+  --color-success-dark: #4ade80;   /* Darker */
+  --color-success-darker: #22c55e; /* Even darker */
+
+  /* Pastel Accent (Warn/Peach) */
+  --color-warn: #fdba74;           /* Soft peach/amber */
+  --color-warn-dark: #fb923c;      /* Darker */
+  --color-warn-darker: #f97316;    /* Even darker */
+
+  /* Answer Button Colors (Pastel Kahoot-style) */
+  --color-answer-red: #fbcfe8;     /* Pastel pink */
+  --color-answer-blue: #a5f3fc;    /* Pastel cyan */
+  --color-answer-yellow: #fef3c7;  /* Pastel yellow */
+  --color-answer-green: #d1fae5;   /* Pastel green */
+
+  /* Answer button text (ensure readability on light pastels) */
+  --color-answer-red-text: #9d174d;
+  --color-answer-blue-text: #155e75;
+  --color-answer-yellow-text: #78350f;
+  --color-answer-green-text: #065f46;
+
+  /* Grayscale / Neutrals */
+  --color-bg-light: #faf5ff;       /* Light lavender background */
+  --color-bg-card: #f5f3ff;        /* Slightly warmer card bg */
+  --color-border: #e9d5ff;         /* Soft lavender border */
+  --color-border-muted: #ddd6fe;   /* Secondary border */
+  --color-text-dark: #581c87;      /* Dark purple text */
+  --color-text-body: #4c1d95;      /* Body text purple */
+  --color-text-muted: #7c3aed;     /* Medium purple for hints */
+  --color-text-secondary: #8b5cf6; /* Secondary text */
+  --color-text-light: #f3f4f6;     /* Light text (for dark mode) */
+
+  /* Semantic Colors */
+  --color-error: #f472b6;          /* Pastel pink for errors */
+  --color-error-bg: #fce7f3;       /* Light pink bg */
+  --color-error-border: #f9a8d4;   /* Pink border */
+  --color-error-text: #9d174d;     /* Dark pink text */
+
+  --color-warning-bg: #fef3c7;     /* Yellow-ish warning bg */
+  --color-warning-border: #fde68a; /* Yellow border */
+  --color-warning-text: #92400e;   /* Dark amber text */
+
+  --color-success-bg: #d1fae5;     /* Green success bg */
+  --color-success-border: #a7f3d0; /* Green border */
+  --color-success-text: #065f46;   /* Dark green text */
+
+  /* Chip/badge colors */
+  --color-chip-bg: #ede9fe;        /* Light purple chip */
+  --color-chip-text: #5b21b6;      /* Dark purple chip text */
+  --color-chip-danger-bg: #fce7f3; /* Pink chip */
+  --color-chip-danger-text: #9d174d;
+
+  /* Fonts */
+  --font-display: 'Poppins', system-ui, sans-serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   Dark mode pastel variants
+   -------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #c084fc;
+    --color-primary-dark: #a855f7;
+    --color-primary-darker: #9333ea;
+
+    --color-success: #4ade80;
+    --color-success-dark: #22c55e;
+    --color-success-darker: #16a34a;
+
+    --color-warn: #fb923c;
+    --color-warn-dark: #f97316;
+    --color-warn-darker: #ea580c;
+
+    --color-answer-red: #f472b6;
+    --color-answer-blue: #22d3ee;
+    --color-answer-yellow: #fde047;
+    --color-answer-green: #4ade80;
+
+    --color-answer-red-text: #fff;
+    --color-answer-blue-text: #0c4a6e;
+    --color-answer-yellow-text: #422006;
+    --color-answer-green-text: #052e16;
+
+    --color-bg-light: #1a1025;      /* Dark purple-ish bg */
+    --color-bg-card: #231735;       /* Dark card */
+    --color-border: #3b1f5e;        /* Dark border */
+    --color-border-muted: #312454;
+    --color-text-dark: #f3e8ff;     /* Light text in dark */
+    --color-text-body: #e9d5ff;
+    --color-text-muted: #c4b5fd;
+    --color-text-secondary: #a78bfa;
+    --color-text-light: #1a1025;
+
+    --color-error: #f472b6;
+    --color-error-bg: #3d1030;
+    --color-error-border: #831843;
+    --color-error-text: #fbcfe8;
+
+    --color-warning-bg: #3d2800;
+    --color-warning-border: #92400e;
+    --color-warning-text: #fde68a;
+
+    --color-success-bg: #052e16;
+    --color-success-border: #166534;
+    --color-success-text: #a7f3d0;
+
+    --color-chip-bg: #3b1f5e;
+    --color-chip-text: #e9d5ff;
+    --color-chip-danger-bg: #3d1030;
+    --color-chip-danger-text: #fbcfe8;
+  }
+}
+
+/* ==========================================================================
+   Reset & Base
+   ========================================================================== */
+
 *,
 *::before,
 *::after {
@@ -6,15 +137,14 @@
 }
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
   font-size: 16px;
 
   color-scheme: light dark;
-  color: #213547;
-  background-color: #ffffff;
+  color: var(--color-text-body);
+  background-color: var(--color-bg-light);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -54,7 +184,15 @@ body {
   text-align: center;
 }
 
-/* Typography */
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  color: var(--color-text-dark);
+}
+
 h1 {
   font-size: 2rem;
   line-height: 1.2;
@@ -69,12 +207,15 @@ h2 {
 
 p {
   margin: 0 0 1rem;
-  color: #666;
+  color: var(--color-text-muted);
 }
 
-/* Links */
+/* ==========================================================================
+   Links
+   ========================================================================== */
+
 a {
-  color: #4f46e5;
+  color: var(--color-primary-dark);
   text-decoration: none;
 }
 
@@ -82,7 +223,10 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Buttons */
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -90,6 +234,7 @@ a:hover {
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 0.5rem;
+  font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -103,7 +248,7 @@ a:hover {
 }
 
 .btn:focus-visible {
-  outline: 2px solid #4f46e5;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
@@ -114,21 +259,21 @@ a:hover {
 }
 
 .btn-primary {
-  background-color: #4f46e5;
-  color: #fff;
+  background-color: var(--color-primary);
+  color: var(--color-text-dark);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #4338ca;
+  background-color: var(--color-primary-dark);
 }
 
 .btn-secondary {
-  background-color: #e5e7eb;
-  color: #1f2937;
+  background-color: var(--color-border);
+  color: var(--color-text-dark);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #d1d5db;
+  background-color: var(--color-border-muted);
 }
 
 /* Button group */
@@ -143,27 +288,6 @@ a:hover {
 
 .button-group .btn {
   width: 100%;
-}
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f3f4f6;
-    background-color: #111827;
-  }
-
-  p {
-    color: #9ca3af;
-  }
-
-  .btn-secondary {
-    background-color: #374151;
-    color: #f3f4f6;
-  }
-
-  .btn-secondary:hover {
-    background-color: #4b5563;
-  }
 }
 
 /* Responsive: larger screens */
