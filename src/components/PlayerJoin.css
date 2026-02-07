@@ -29,33 +29,36 @@
 
 .join-form .form-label {
   display: block;
+  font-family: var(--font-body);
   font-weight: 600;
   margin-bottom: 0.375rem;
   font-size: 0.95rem;
+  color: var(--color-text-dark);
 }
 
 .join-form .form-input {
   display: block;
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
+  font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.5;
-  background-color: #fff;
-  color: #213547;
+  background-color: var(--color-bg-card);
+  color: var(--color-text-body);
   transition: border-color 0.15s ease;
   min-height: 44px;
 }
 
 .join-form .form-input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: var(--color-primary-dark);
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.2);
 }
 
 .join-form .form-input::placeholder {
-  color: #9ca3af;
+  color: var(--color-text-secondary);
 }
 
 /* Game code input — large and centered */
@@ -65,24 +68,24 @@
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-family: var(--font-display);
 }
 
 /* QR hint */
 .qr-hint {
   font-size: 0.8rem;
-  color: #22c55e;
+  color: var(--color-success-dark);
   font-weight: 600;
   margin-top: 0.25rem;
 }
 
 /* Error display */
 .join-error {
-  background-color: #fef2f2;
-  border: 1px solid #fca5a5;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-  color: #991b1b;
+  color: var(--color-error-text);
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: 1rem;
@@ -92,13 +95,14 @@
 .join-error .error-suggestion {
   font-weight: 400;
   font-size: 0.825rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0.5rem 0 0;
 }
 
 /* Join button */
 .join-btn {
   width: 100%;
+  font-family: var(--font-display);
   font-size: 1.1rem;
   padding: 0.875rem;
 }
@@ -114,15 +118,15 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-weight: 600;
 }
 
 .spinner {
   width: 20px;
   height: 20px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #4f46e5;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary-dark);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -134,37 +138,4 @@
 /* Back link */
 .join-back {
   margin-top: 1.5rem;
-}
-
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  .join-form .form-input {
-    background-color: #1f2937;
-    border-color: #4b5563;
-    color: #f3f4f6;
-  }
-
-  .join-form .form-input:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  }
-
-  .join-form .form-input::placeholder {
-    color: #6b7280;
-  }
-
-  .join-error {
-    background-color: #450a0a;
-    border-color: #7f1d1d;
-    color: #fca5a5;
-  }
-
-  .join-loading {
-    color: #9ca3af;
-  }
-
-  .spinner {
-    border-color: #374151;
-    border-top-color: #818cf8;
-  }
 }

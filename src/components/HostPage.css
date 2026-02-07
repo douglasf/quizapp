@@ -10,8 +10,8 @@
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #4f46e5;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary-dark);
   border-radius: 50%;
   animation: host-spin 0.6s linear infinite;
 }
@@ -37,21 +37,21 @@
 
 /* Warning banner */
 .lobby-warning {
-  background-color: #fef3c7;
-  border: 1px solid #fcd34d;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   margin-bottom: 1.5rem;
   text-align: center;
   font-weight: 600;
   font-size: 0.875rem;
-  color: #92400e;
+  color: var(--color-warning-text);
 }
 
 /* Game code card */
 .game-code-card {
-  background-color: #f9fafb;
-  border: 2px solid #e5e7eb;
+  background-color: var(--color-bg-card);
+  border: 2px solid var(--color-border);
   border-radius: 1rem;
   padding: 1.5rem;
   text-align: center;
@@ -59,20 +59,21 @@
 }
 
 .game-code-label {
+  font-family: var(--font-body);
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 0.5rem;
 }
 
 .game-code-value {
+  font-family: var(--font-display);
   font-size: 3rem;
   font-weight: 800;
   letter-spacing: 0.2em;
-  color: #4f46e5;
+  color: var(--color-primary-dark);
   margin-bottom: 1rem;
-  font-family: 'SF Mono', 'Fira Code', monospace;
 }
 
 /* QR code wrapper */
@@ -98,13 +99,13 @@
   align-items: center;
   gap: 0.5rem;
   padding: 2rem 1rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   font-size: 0.875rem;
 }
 
 .join-url-hint {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
   word-break: break-all;
   margin-top: 0.5rem;
 }
@@ -113,11 +114,11 @@
 .localhost-warning {
   margin-top: 0.75rem;
   padding: 0.625rem 0.875rem;
-  background-color: #fef3c7;
-  border: 1px solid #fcd34d;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 0.5rem;
   font-size: 0.75rem;
-  color: #92400e;
+  color: var(--color-warning-text);
   line-height: 1.4;
   text-align: left;
 }
@@ -138,8 +139,8 @@
 .ip-override-banner {
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
-  background-color: #fff7ed;
-  border: 1px solid #fb923c;
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warn);
   border-radius: 0.5rem;
   text-align: left;
 }
@@ -147,7 +148,7 @@
 .ip-override-banner__text {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #9a3412;
+  color: var(--color-warning-text);
   margin-bottom: 0.5rem;
 }
 
@@ -160,17 +161,19 @@
 .ip-override-input {
   flex: 1;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   font-size: 0.875rem;
   font-family: 'SF Mono', 'Fira Code', monospace;
   min-width: 0;
+  background-color: var(--color-bg-card);
+  color: var(--color-text-body);
 }
 
 .ip-override-input:focus {
   outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  border-color: var(--color-primary-dark);
+  box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.25);
 }
 
 .ip-override-btn {
@@ -183,11 +186,11 @@
 .ip-override-active {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background-color: #ecfdf5;
-  border: 1px solid #34d399;
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-success);
   border-radius: 0.5rem;
   font-size: 0.8rem;
-  color: #065f46;
+  color: var(--color-success-text);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -198,7 +201,7 @@
 .ip-override-clear {
   background: none;
   border: none;
-  color: #dc2626;
+  color: var(--color-error);
   font-size: 0.75rem;
   cursor: pointer;
   text-decoration: underline;
@@ -212,10 +215,11 @@
 
 .player-count {
   text-align: center;
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 1rem;
   margin-bottom: 0.75rem;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .player-list {
@@ -236,13 +240,13 @@
   border-radius: 2rem;
   font-weight: 600;
   font-size: 0.9rem;
-  background-color: #e0e7ff;
-  color: #3730a3;
+  background-color: var(--color-chip-bg);
+  color: var(--color-chip-text);
 }
 
 .player-chip--disconnected {
-  background-color: #fee2e2;
-  color: #991b1b;
+  background-color: var(--color-chip-danger-bg);
+  color: var(--color-chip-danger-text);
   opacity: 0.7;
 }
 
@@ -254,16 +258,16 @@
 }
 
 .player-status-dot--connected {
-  background-color: #22c55e;
+  background-color: var(--color-success);
 }
 
 .player-status-dot--disconnected {
-  background-color: #ef4444;
+  background-color: var(--color-error);
 }
 
 .player-list-empty {
   text-align: center;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
   font-style: italic;
   padding: 1rem;
 }
@@ -282,39 +286,41 @@
 }
 
 .btn-start {
-  background-color: #22c55e;
-  color: #fff;
+  background-color: var(--color-success);
+  color: var(--color-success-text);
+  font-family: var(--font-display);
   font-size: 1.1rem;
   padding: 1rem 2rem;
 }
 
 .btn-start:hover:not(:disabled) {
-  background-color: #16a34a;
+  background-color: var(--color-success-dark);
 }
 
 .btn-start:disabled {
-  background-color: #9ca3af;
+  background-color: var(--color-border);
+  color: var(--color-text-secondary);
   cursor: not-allowed;
   opacity: 0.7;
 }
 
 .btn-danger {
   background-color: transparent;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  color: var(--color-error);
+  border: 1px solid var(--color-error-border);
 }
 
 .btn-danger:hover {
-  background-color: #fef2f2;
+  background-color: var(--color-error-bg);
 }
 
 .lobby-error {
   text-align: center;
-  color: #dc2626;
+  color: var(--color-error-text);
   font-weight: 600;
   margin-bottom: 1rem;
-  background-color: #fef2f2;
-  border: 1px solid #fca5a5;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
   border-radius: 0.5rem;
   padding: 1rem;
 }
@@ -322,7 +328,7 @@
 .error-suggestion {
   font-weight: 400;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin: 0.5rem 0 0;
 }
 
@@ -334,7 +340,7 @@
 /* Copied toast */
 .copied-toast {
   font-size: 0.8rem;
-  color: #16a34a;
+  color: var(--color-success-dark);
   font-weight: 600;
 }
 
@@ -360,18 +366,21 @@
 }
 
 .question-counter {
+  font-family: var(--font-body);
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 0.375rem;
 }
 
 .question-text {
+  font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.3;
   margin: 0;
+  color: var(--color-text-dark);
 }
 
 /* Answer options grid */
@@ -390,27 +399,39 @@
   border-radius: 0.75rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #fff;
   border: 3px solid transparent;
   min-height: 3.5rem;
   transition: opacity 0.2s ease, border-color 0.2s ease;
 }
 
 .host-option-label {
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 1.1rem;
   opacity: 0.8;
 }
 
-.host-option--red { background-color: #FF6B6B; }
-.host-option--blue { background-color: #4ECDC4; }
-.host-option--yellow { background-color: #FFE66D; color: #333; }
-.host-option--green { background-color: #95E77D; color: #333; }
+.host-option--red {
+  background-color: var(--color-answer-red);
+  color: var(--color-answer-red-text);
+}
+.host-option--blue {
+  background-color: var(--color-answer-blue);
+  color: var(--color-answer-blue-text);
+}
+.host-option--yellow {
+  background-color: var(--color-answer-yellow);
+  color: var(--color-answer-yellow-text);
+}
+.host-option--green {
+  background-color: var(--color-answer-green);
+  color: var(--color-answer-green-text);
+}
 
 /* Revealed states */
 .host-option--correct {
-  border-color: #fff;
-  box-shadow: 0 0 0 3px #22c55e, 0 4px 12px rgba(34, 197, 94, 0.3);
+  border-color: var(--color-success-darker);
+  box-shadow: 0 0 0 3px var(--color-success), 0 4px 12px rgba(134, 239, 172, 0.4);
 }
 
 .host-option--incorrect {
@@ -428,7 +449,7 @@
 }
 
 .distribution-count {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(255, 255, 255, 0.4);
   padding: 0.125rem 0.5rem;
   border-radius: 1rem;
   font-weight: 700;
@@ -441,11 +462,11 @@
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: #374151;
+  color: var(--color-text-body);
 }
 
 .answer-counter-number {
-  color: #4f46e5;
+  color: var(--color-primary-dark);
   font-size: 1.25rem;
 }
 
@@ -463,36 +484,39 @@
 }
 
 .btn-reveal {
-  background-color: #f59e0b;
-  color: #fff;
+  background-color: var(--color-warn);
+  color: var(--color-answer-yellow-text);
+  font-family: var(--font-display);
   font-size: 1.1rem;
   padding: 0.875rem 2rem;
 }
 
 .btn-reveal:hover {
-  background-color: #d97706;
+  background-color: var(--color-warn-dark);
 }
 
 .btn-next {
-  background-color: #4f46e5;
-  color: #fff;
+  background-color: var(--color-primary);
+  color: var(--color-text-dark);
+  font-family: var(--font-display);
   font-size: 1.1rem;
   padding: 0.875rem 2rem;
 }
 
 .btn-next:hover {
-  background-color: #4338ca;
+  background-color: var(--color-primary-dark);
 }
 
 .btn-finish {
-  background-color: #22c55e;
-  color: #fff;
+  background-color: var(--color-success);
+  color: var(--color-success-text);
+  font-family: var(--font-display);
   font-size: 1.1rem;
   padding: 0.875rem 2rem;
 }
 
 .btn-finish:hover {
-  background-color: #16a34a;
+  background-color: var(--color-success-dark);
 }
 
 /* Scoreboard phase */
@@ -517,12 +541,13 @@
 }
 
 .results-title {
+  font-family: var(--font-display);
   font-size: 2rem;
   margin-bottom: 0.25rem;
 }
 
 .results-subtitle {
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-bottom: 2rem;
   font-size: 1rem;
 }
@@ -541,138 +566,16 @@
 }
 
 /* --------------------------------------------------------------------------
-   Dark Mode
+   Dark Mode — QR wrapper always white for scanability
    -------------------------------------------------------------------------- */
 
 @media (prefers-color-scheme: dark) {
-  /* Spinner */
-  .spinner {
-    border-color: #374151;
-    border-top-color: #818cf8;
-  }
-
-  /* Lobby */
-  .lobby-warning {
-    background-color: #451a03;
-    border-color: #92400e;
-    color: #fcd34d;
-  }
-
-  .game-code-card {
-    background-color: #1f2937;
-    border-color: #374151;
-  }
-
-  .game-code-value {
-    color: #818cf8;
-  }
-
-  .game-code-label {
-    color: #9ca3af;
-  }
-
   .qr-wrapper {
     background-color: #fff;
   }
 
-  .join-url-hint {
-    color: #6b7280;
-  }
-
-  .localhost-warning {
-    background-color: #451a03;
-    border-color: #92400e;
-    color: #fcd34d;
-  }
-
   .localhost-warning code {
     background-color: rgba(255, 255, 255, 0.12);
-  }
-
-  /* IP override banner */
-  .ip-override-banner {
-    background-color: #431407;
-    border-color: #c2410c;
-  }
-
-  .ip-override-banner__text {
-    color: #fdba74;
-  }
-
-  .ip-override-input {
-    background-color: #1f2937;
-    border-color: #4b5563;
-    color: #f3f4f6;
-  }
-
-  .ip-override-input:focus {
-    border-color: #818cf8;
-    box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
-  }
-
-  .ip-override-active {
-    background-color: #064e3b;
-    border-color: #059669;
-    color: #a7f3d0;
-  }
-
-  .ip-override-clear {
-    color: #f87171;
-  }
-
-  .player-count {
-    color: #d1d5db;
-  }
-
-  .player-chip {
-    background-color: #312e81;
-    color: #c7d2fe;
-  }
-
-  .player-chip--disconnected {
-    background-color: #450a0a;
-    color: #fca5a5;
-  }
-
-  .player-list-empty {
-    color: #6b7280;
-  }
-
-  .btn-danger {
-    color: #f87171;
-    border-color: #7f1d1d;
-  }
-
-  .btn-danger:hover {
-    background-color: #450a0a;
-  }
-
-  .lobby-error {
-    background-color: #450a0a;
-    border-color: #7f1d1d;
-    color: #f87171;
-  }
-
-  .error-suggestion {
-    color: #9ca3af;
-  }
-
-  /* Game */
-  .question-counter {
-    color: #9ca3af;
-  }
-
-  .answer-counter {
-    color: #d1d5db;
-  }
-
-  .answer-counter-number {
-    color: #818cf8;
-  }
-
-  /* Results */
-  .results-subtitle {
-    color: #9ca3af;
   }
 }
 
