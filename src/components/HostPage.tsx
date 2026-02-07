@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useHost } from '../hooks/useHost';
 import { useGameState } from '../hooks/useGameState';
+import { useHostUrl } from '../hooks/useHostUrl';
 import { generateGameCode } from '../utils/gameCode';
 import Scoreboard from './Scoreboard';
 import type { Quiz } from '../types/quiz';
@@ -22,7 +23,7 @@ const OPTION_LABELS = ['A', 'B', 'C', 'D'] as const;
 function HostPage() {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  const [gameCode] = useState(() => generateGameCode());
+  const [initialGameCode] = useState(() => generateGameCode());
   const [quiz, setQuiz] = useState<Quiz | null>(null);
 
   const {
@@ -48,8 +49,8 @@ function HostPage() {
   // assigned afterwards via useEffect once sendToPlayer is available.
   const onPlayerRejoinRef = useRef<((playerName: string) => void) | null>(null);
 
-  const { players, broadcast, sendToPlayer, error: hostError, getAnswers, updatePlayerScore, resetScores } = useHost(
-    gameCode,
+  const { gameCode, players, broadcast, sendToPlayer, error: hostError, getAnswers, updatePlayerScore, resetScores, retryWithNewCode } = useHost(
+    initialGameCode,
     currentQuestionIndexRef,
     phaseRef,
     onPlayerRejoinRef,
@@ -89,15 +90,48 @@ function HostPage() {
     try {
       const parsed = JSON.parse(stored) as Quiz;
       setQuiz(parsed);
-      initGame(parsed, gameCode);
+      initGame(parsed, initialGameCode);
     } catch {
       navigate('/');
     }
-  }, [navigate, gameCode, initGame]);
+  }, [navigate, initialGameCode, initGame]);
+
+  const { joinBaseUrl, detecting: detectingIp, localIp, detectedIp, manualIp, setManualIp } = useHostUrl();
+  const [ipInputValue, setIpInputValue] = useState('');
 
   const connectedCount = Array.from(players.values()).filter((p) => p.connected).length;
   const playerCount = players.size;
-  const joinUrl = `${window.location.origin}${window.location.pathname}#/join/${gameCode}`;
+  const joinUrl = `${joinBaseUrl}#/join/${gameCode}`;
+
+  // True when we're on localhost but failed to detect a LAN IP — the QR code
+  // will contain "localhost" which won't work on other devices.
+  const isLocalhostFallback =
+    !detectingIp &&
+    !localIp &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // Show the IP override banner when on localhost and the detected IP
+  // doesn't look like a typical local network address (or detection failed).
+  const isOnLocalhost =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const detectedIpLooksWrong =
+    isOnLocalhost &&
+    !detectingIp &&
+    !manualIp &&
+    (!detectedIp || (!detectedIp.startsWith('192.168.') && !detectedIp.startsWith('10.')));
+
+  const handleManualIpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = ipInputValue.trim();
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(trimmed)) {
+      setManualIp(trimmed);
+    }
+  };
+
+  const handleClearOverride = () => {
+    setManualIp(null);
+    setIpInputValue('');
+  };
 
   // ─── Lobby actions ───
 
@@ -258,6 +292,13 @@ function HostPage() {
             <div className="lobby-error" role="alert">
               {hostError}
               <p className="error-suggestion">Try refreshing the page to generate a new game code.</p>
+              <button
+                type="button"
+                className="btn btn-secondary retry-btn"
+                onClick={retryWithNewCode}
+              >
+                Retry with New Code
+              </button>
             </div>
           )}
 
@@ -267,10 +308,60 @@ function HostPage() {
             <div className="game-code-value">{gameCode}</div>
 
             <div className="qr-wrapper">
-              <QRCodeSVG value={joinUrl} size={160} level="M" />
+              {detectingIp ? (
+                <div className="qr-detecting">
+                  <div className="spinner" />
+                  <span>Detecting network address...</span>
+                </div>
+              ) : (
+                <QRCodeSVG value={joinUrl} size={160} level="M" />
+              )}
             </div>
 
-            <div className="join-url-hint">{joinUrl}</div>
+            <div className="join-url-hint">{detectingIp ? 'Detecting...' : joinUrl}</div>
+
+            {isLocalhostFallback && (
+              <div className="localhost-warning">
+                Could not detect your network IP. The link above uses <code>localhost</code> and
+                will only work on this device. Players on other devices should visit your
+                IP address manually (e.g. <code>http://192.168.x.x:{window.location.port}/quizapp/</code>)
+                and enter the game code.
+              </div>
+            )}
+
+            {/* IP override banner — shown when detected IP looks wrong (public IP or missing) */}
+            {detectedIpLooksWrong && (
+              <div className="ip-override-banner">
+                <div className="ip-override-banner__text">
+                  ⚠️ Wrong IP detected{detectedIp ? ` (${detectedIp})` : ''}. Enter your local network IP:
+                </div>
+                <form className="ip-override-form" onSubmit={handleManualIpSubmit}>
+                  <input
+                    type="text"
+                    className="ip-override-input"
+                    placeholder="e.g. 192.168.1.47"
+                    value={ipInputValue}
+                    onChange={(e) => setIpInputValue(e.target.value)}
+                    pattern="\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+                    inputMode="decimal"
+                    autoComplete="off"
+                  />
+                  <button type="submit" className="btn btn-secondary ip-override-btn">
+                    Use this IP
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Indicator when manual override is active */}
+            {manualIp && (
+              <div className="ip-override-active">
+                Using manual IP: <strong>{manualIp}</strong>
+                <button type="button" className="ip-override-clear" onClick={handleClearOverride}>
+                  Clear override
+                </button>
+              </div>
+            )}
 
             <button type="button" className="btn btn-secondary copy-link-btn" onClick={handleCopyLink}>
               {copied ? <span className="copied-toast">Copied!</span> : 'Copy Join Link'}

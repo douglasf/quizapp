@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import type Peer from 'peerjs';
 import type { DataConnection } from 'peerjs';
 import { createHostPeer } from '../utils/peer';
+import { generateGameCode } from '../utils/gameCode';
 import type { Player, GamePhase } from '../types/game';
 import type { PlayerMessage, HostMessage } from '../types/messages';
 
@@ -23,6 +24,7 @@ export interface UseHostReturn {
   getAnswers: (questionIndex: number) => Map<string, number>;
   updatePlayerScore: (playerName: string, delta: number) => void;
   resetScores: () => void;
+  retryWithNewCode: () => void;
   peer: Peer | null;
   error: string | null;
 }
@@ -42,7 +44,7 @@ export function useHost(
   phaseRef?: React.RefObject<GamePhase>,
   onPlayerRejoinRef?: React.RefObject<((playerName: string) => void) | null>,
 ): UseHostReturn {
-  const [gameCode] = useState(initialGameCode);
+  const [gameCode, setGameCode] = useState(initialGameCode);
   const [players, setPlayers] = useState<Map<string, Player>>(() => new Map());
   const [error, setError] = useState<string | null>(null);
   const [peer, setPeer] = useState<Peer | null>(null);
@@ -53,6 +55,10 @@ export function useHost(
   const playersRef = useRef<Map<string, Player>>(new Map()); // keyed by player name (lowercase)
   // answers per question: Map<questionIndex, Map<playerName, optionIndex>>
   const answersRef = useRef<Map<number, Map<string, number>>>(new Map());
+  // Track retry attempts for unavailable-id errors
+  const retryCountRef = useRef(0);
+  // Track whether a delayed retry is pending (to avoid double-triggers)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ---------- helpers ----------
 
@@ -322,6 +328,26 @@ export function useHost(
     [gameCode, broadcast, buildPlayerListMessage, syncPlayersState, addAnswer, currentQuestionIndexRef, phaseRef, onPlayerRejoinRef],
   );
 
+  // ---------- manual retry ----------
+
+  /** Manually generate a new game code and retry the peer connection.
+   *  Useful when auto-retries are exhausted (especially during local dev). */
+  const retryWithNewCode = useCallback(() => {
+    // Clean up any existing peer
+    if (peerRef.current && !peerRef.current.destroyed) {
+      peerRef.current.destroy();
+    }
+    // Clear any pending auto-retry timer
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    // Reset retry counter and generate fresh code
+    retryCountRef.current = 0;
+    setError(null);
+    setGameCode(generateGameCode());
+  }, []);
+
   // ---------- peer lifecycle ----------
 
   useEffect(() => {
@@ -334,6 +360,7 @@ export function useHost(
 
     p.on('open', () => {
       console.log(`[useHost] Peer open with ID: ${p.id}`);
+      retryCountRef.current = 0;
       setError(null);
     });
 
@@ -344,7 +371,24 @@ export function useHost(
     p.on('error', (err) => {
       console.error('[useHost] Peer error:', err);
       if (err.type === 'unavailable-id') {
-        setError('Game code already in use. Please try a different code.');
+        if (retryCountRef.current < 3) {
+          retryCountRef.current++;
+          const attempt = retryCountRef.current;
+          // In dev mode, PeerJS Cloud may still hold the old peer ID for a few seconds.
+          // Add a delay before retrying so the old registration has time to expire.
+          const delayMs = import.meta.env.DEV ? 1500 : 500;
+          setError(`Game code taken, retrying in ${delayMs / 1000}s... (attempt ${attempt}/3)`);
+          p.destroy();
+          retryTimerRef.current = setTimeout(() => {
+            const newCode = generateGameCode();
+            console.log(
+              `[useHost] Retrying with new code ${newCode} (attempt ${attempt}/3)`,
+            );
+            setGameCode(newCode);
+          }, delayMs);
+        } else {
+          setError('Unable to create game after 3 attempts. Please refresh and try again.');
+        }
       } else {
         setError(`Connection error: ${err.message}`);
       }
@@ -358,6 +402,10 @@ export function useHost(
     });
 
     return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
       p.destroy();
       peerRef.current = null;
       connections.clear();
@@ -373,6 +421,7 @@ export function useHost(
     getAnswers,
     updatePlayerScore,
     resetScores,
+    retryWithNewCode,
     peer,
     error,
   };
