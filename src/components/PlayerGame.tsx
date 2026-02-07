@@ -35,7 +35,7 @@ function PlayerGame() {
   const {
     connectionStatus,
     reconnectAttempts,
-    handleRejoin,
+    handleGetState,
     handleSubmitAnswer,
     onMessage,
   } = usePlayer(playerData?.gameCode ?? '');
@@ -47,19 +47,19 @@ function PlayerGame() {
   const [standings, setStandings] = useState<PlayerStanding[]>([]);
   const [showReconnectedToast, setShowReconnectedToast] = useState(false);
   const [prevConnectionStatus, setPrevConnectionStatus] = useState(connectionStatus);
-  const [hasRejoinedRef] = useState(() => ({ current: false }));
+  const [hasGotStateRef] = useState(() => ({ current: false }));
 
-  // Send rejoin message when connection opens so the host recognises the new peer
+  // Send get_state message when connection opens so the host sends us the current game state
   useEffect(() => {
     if (
       connectionStatus === 'connected' &&
       playerData?.playerName &&
-      !hasRejoinedRef.current
+      !hasGotStateRef.current
     ) {
-      handleRejoin(playerData.playerName);
-      hasRejoinedRef.current = true;
+      handleGetState(playerData.playerName);
+      hasGotStateRef.current = true;
     }
-  }, [connectionStatus, playerData?.playerName, handleRejoin, hasRejoinedRef]);
+  }, [connectionStatus, playerData?.playerName, handleGetState, hasGotStateRef]);
 
   // Detect reconnection success and show toast
   useEffect(() => {
@@ -73,6 +73,22 @@ function PlayerGame() {
   // Handle incoming messages from host
   const handleMessage = useCallback((msg: HostMessage) => {
     switch (msg.type) {
+      case 'game_state': {
+        // Map host GamePhase to PlayerPhase
+        const phaseMap: Record<string, PlayerPhase> = {
+          lobby: 'waiting',
+          question: 'waiting', // will be overridden when question message arrives
+          answer_reveal: 'waiting',
+          scoreboard: 'scoreboard',
+          finished: 'finished',
+        };
+        const mappedPhase = phaseMap[msg.phase] ?? 'waiting';
+        setPhase(mappedPhase);
+        if (msg.standings) {
+          setStandings(msg.standings);
+        }
+        break;
+      }
       case 'question': {
         setCurrentQuestion({
           index: msg.index,

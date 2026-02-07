@@ -4,6 +4,7 @@
 export type PlayerMessage =
   | { type: 'join'; name: string }
   | { type: 'rejoin'; name: string }
+  | { type: 'get_state'; name: string }
   | { type: 'answer'; questionIndex: number; optionIndex: number }
   | { type: 'ping' };
 
@@ -11,6 +12,7 @@ export type PlayerMessage =
 export type HostMessage =
   | { type: 'welcome'; playerName: string; gameCode: string }
   | { type: 'rejoin_success'; playerName: string; gameCode: string; score: number; currentQuestionIndex: number; phase: string }
+  | { type: 'game_state'; phase: string; currentQuestionIndex: number; score: number; standings?: { name: string; score: number; rank: number }[] }
   | { type: 'player_list'; players: { name: string; connected: boolean }[] }
   | { type: 'question'; index: number; total: number; text: string; options: [string, string, string, string] }
   | { type: 'answer_ack'; questionIndex: number }

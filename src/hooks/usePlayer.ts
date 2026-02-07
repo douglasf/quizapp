@@ -10,11 +10,12 @@ const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_INTERVAL_MS = 5_000;
 
 export interface UsePlayerReturn {
-  connectionStatus: 'connected' | 'reconnecting' | 'failed';
+  connectionStatus: 'disconnected' | 'connected' | 'reconnecting' | 'failed';
   reconnectAttempts: number;
   playerName: string | null;
   handleJoin: (name: string) => void;
   handleRejoin: (name: string) => void;
+  handleGetState: (name: string) => void;
   handleSubmitAnswer: (optionIndex: number) => void;
   onMessage: (handler: (msg: HostMessage) => void) => void;
   onError: (handler: (error: string) => void) => void;
@@ -33,7 +34,7 @@ export interface UsePlayerReturn {
  *  5. On disconnect, auto-retries up to 3 times with 5-second intervals.
  */
 export function usePlayer(gameCode: string): UsePlayerReturn {
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'failed'>('connected');
+  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connected' | 'reconnecting' | 'failed'>('disconnected');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,6 +88,17 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
       case 'rejoin_success': {
         setPlayerName(msg.playerName);
         playerNameRef.current = msg.playerName;
+        setConnectionStatus('connected');
+        setReconnectAttempts(0);
+        reconnectAttemptsRef.current = 0;
+        isReconnectingRef.current = false;
+        setIsLoading(false);
+        setErrorMessage(null);
+        break;
+      }
+
+      case 'game_state': {
+        // Sync response — update connection status and clear any reconnection state
         setConnectionStatus('connected');
         setReconnectAttempts(0);
         reconnectAttemptsRef.current = 0;
@@ -345,6 +357,25 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
     playerNameRef.current = trimmed;
   }, []);
 
+  /**
+   * Send a `get_state` message to the host.
+   * Used when PlayerGame mounts with a new connection to sync the current
+   * game phase without triggering the "already connected" rejection of rejoin.
+   */
+  const handleGetState = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const conn = connRef.current;
+    if (!conn || !conn.open) return;
+
+    const getStateMsg: PlayerMessage = { type: 'get_state', name: trimmed };
+    conn.send(getStateMsg);
+
+    // Also update local refs so reconnection logic can use the name
+    playerNameRef.current = trimmed;
+  }, []);
+
   /** Submit an answer for the current question. */
   const handleSubmitAnswer = useCallback((optionIndex: number) => {
     const conn = connRef.current;
@@ -364,6 +395,7 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
     playerName,
     handleJoin,
     handleRejoin,
+    handleGetState,
     handleSubmitAnswer,
     onMessage,
     onError,

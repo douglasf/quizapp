@@ -43,6 +43,7 @@ export function useHost(
   currentQuestionIndexRef?: React.RefObject<number>,
   phaseRef?: React.RefObject<GamePhase>,
   onPlayerRejoinRef?: React.RefObject<((playerName: string) => void) | null>,
+  onPlayerGetStateRef?: React.RefObject<((playerName: string) => void) | null>,
 ): UseHostReturn {
   const [gameCode, setGameCode] = useState(initialGameCode);
   const [players, setPlayers] = useState<Map<string, Player>>(() => new Map());
@@ -274,6 +275,56 @@ export function useHost(
               break;
             }
 
+            case 'get_state': {
+              const trimmedName = (msg.name ?? '').trim();
+              const key = canonicalName(trimmedName);
+              const player = playersRef.current.get(key);
+
+              if (!player) {
+                conn.send({
+                  type: 'error',
+                  message: 'Player not found',
+                } satisfies HostMessage);
+                return;
+              }
+
+              // Update the player's peerId and connection mapping so future
+              // messages (question, reveal, scoreboard, etc.) reach the new socket.
+              if (player.peerId !== conn.peer) {
+                connectionsRef.current.delete(player.peerId);
+                player.peerId = conn.peer;
+                connectionsRef.current.set(conn.peer, conn);
+              }
+              player.connected = true;
+              syncPlayersState();
+
+              const qIndex = currentQuestionIndexRef?.current ?? 0;
+              const currentPhase = phaseRef?.current ?? 'lobby';
+
+              // Build standings from current players
+              const stateStandings = Array.from(playersRef.current.values())
+                .sort((a, b) => b.score - a.score)
+                .map((p, i) => ({
+                  name: p.name,
+                  score: p.score,
+                  rank: i + 1,
+                }));
+
+              conn.send({
+                type: 'game_state',
+                phase: currentPhase,
+                currentQuestionIndex: qIndex,
+                score: player.score,
+                standings: stateStandings,
+              } satisfies HostMessage);
+
+              broadcast(buildPlayerListMessage());
+
+              // Notify host page so it can send current question data
+              onPlayerGetStateRef?.current?.(player.name);
+              break;
+            }
+
             case 'answer': {
               // Find the player by peerId
               let playerKey: string | null = null;
@@ -325,7 +376,7 @@ export function useHost(
         });
       });
     },
-    [gameCode, broadcast, buildPlayerListMessage, syncPlayersState, addAnswer, currentQuestionIndexRef, phaseRef, onPlayerRejoinRef],
+    [gameCode, broadcast, buildPlayerListMessage, syncPlayersState, addAnswer, currentQuestionIndexRef, phaseRef, onPlayerRejoinRef, onPlayerGetStateRef],
   );
 
   // ---------- manual retry ----------

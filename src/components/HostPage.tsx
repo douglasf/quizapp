@@ -49,11 +49,16 @@ function HostPage() {
   // assigned afterwards via useEffect once sendToPlayer is available.
   const onPlayerRejoinRef = useRef<((playerName: string) => void) | null>(null);
 
+  // Callback ref for when a player sends get_state — sends them the current question
+  // so they can sync to the correct game phase after reconnection.
+  const onPlayerGetStateRef = useRef<((playerName: string) => void) | null>(null);
+
   const { gameCode, players, broadcast, sendToPlayer, error: hostError, getAnswers, updatePlayerScore, resetScores, retryWithNewCode } = useHost(
     initialGameCode,
     currentQuestionIndexRef,
     phaseRef,
     onPlayerRejoinRef,
+    onPlayerGetStateRef,
   );
 
   // Assign the rejoin callback after useHost() so sendToPlayer is in scope
@@ -67,6 +72,30 @@ function HostPage() {
       // If we're in question or answer_reveal phase, send the current question
       if ((phase === 'question' || phase === 'answer_reveal') && question) {
         // Small delay to let the connection stabilize
+        setTimeout(() => {
+          sendToPlayer(playerName, {
+            type: 'question',
+            index: qIndex,
+            total: quiz.questions.length,
+            text: question.text,
+            options: question.options,
+          });
+        }, 200);
+      }
+    };
+  }, [quiz, sendToPlayer]);
+
+  // Assign the get_state callback — sends current question data when a player requests state sync
+  useEffect(() => {
+    onPlayerGetStateRef.current = (playerName: string) => {
+      if (!quiz) return;
+      const phase = phaseRef.current;
+      const qIndex = currentQuestionIndexRef.current;
+      const question = quiz.questions[qIndex];
+
+      // If we're in question or answer_reveal phase, send the current question
+      if ((phase === 'question' || phase === 'answer_reveal') && question) {
+        // Small delay to let the connection stabilize after get_state response
         setTimeout(() => {
           sendToPlayer(playerName, {
             type: 'question',
