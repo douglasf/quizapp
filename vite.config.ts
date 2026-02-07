@@ -5,4 +5,8 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/quizapp/',
+  server: {
+    // Listen on all network interfaces so phones on the same WiFi can connect
+    host: true,
+  },
 })
