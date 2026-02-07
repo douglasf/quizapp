@@ -9,7 +9,10 @@ function Home() {
       <p>Create and play quizzes with friends in real-time — no server needed!</p>
       <div className="button-group">
         <button type="button" className="btn btn-primary" onClick={() => navigate('/create')}>
-          Host a Quiz
+          Create a Quiz
+        </button>
+        <button type="button" className="btn btn-primary" onClick={() => navigate('/import?mode=load')}>
+          Load &amp; Host Quiz
         </button>
         <button type="button" className="btn btn-secondary" onClick={() => navigate('/join')}>
           Join a Quiz

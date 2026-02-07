@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Quiz } from '../types/quiz'
 import { validateQuiz } from '../utils/quizValidator'
 import './QuizImport.css'
@@ -9,6 +9,8 @@ const IMPORTED_QUIZ_KEY = 'quizapp_imported_quiz'
 
 function QuizImport() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const isLoadMode = searchParams.get('mode') === 'load'
 
   // Export state — quiz that was just created
   const [createdQuiz, setCreatedQuiz] = useState<Quiz | null>(null)
@@ -144,7 +146,7 @@ function QuizImport() {
   return (
     <div className="page quiz-import">
       <div className="import-container">
-        <h1>Import / Export Quiz</h1>
+        <h1>{isLoadMode && !createdQuiz ? 'Load a Quiz to Host' : 'Import / Export Quiz'}</h1>
 
         {/* ─── Export section ─── */}
         {createdQuiz && (
@@ -193,9 +195,12 @@ function QuizImport() {
 
         {/* ─── Import section ─── */}
         <section className="import-section">
-          <h2>Import a Quiz</h2>
+          <h2>{isLoadMode && !createdQuiz ? 'Load Your Quiz' : 'Import a Quiz'}</h2>
           <p className="section-description">
-            Paste quiz JSON below or upload a <code>.json</code> file.
+            {isLoadMode && !createdQuiz
+              ? 'Paste a previously saved quiz JSON below or upload a .json file to start hosting.'
+              : <>Paste quiz JSON below or upload a <code>.json</code> file.</>
+            }
           </p>
 
           {/* Error display */}
