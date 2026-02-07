@@ -35,6 +35,7 @@ function PlayerGame() {
   const {
     connectionStatus,
     reconnectAttempts,
+    handleRejoin,
     handleSubmitAnswer,
     onMessage,
   } = usePlayer(playerData?.gameCode ?? '');
@@ -46,6 +47,19 @@ function PlayerGame() {
   const [standings, setStandings] = useState<PlayerStanding[]>([]);
   const [showReconnectedToast, setShowReconnectedToast] = useState(false);
   const [prevConnectionStatus, setPrevConnectionStatus] = useState(connectionStatus);
+  const [hasRejoinedRef] = useState(() => ({ current: false }));
+
+  // Send rejoin message when connection opens so the host recognises the new peer
+  useEffect(() => {
+    if (
+      connectionStatus === 'connected' &&
+      playerData?.playerName &&
+      !hasRejoinedRef.current
+    ) {
+      handleRejoin(playerData.playerName);
+      hasRejoinedRef.current = true;
+    }
+  }, [connectionStatus, playerData?.playerName, handleRejoin, hasRejoinedRef]);
 
   // Detect reconnection success and show toast
   useEffect(() => {

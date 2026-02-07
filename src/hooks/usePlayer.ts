@@ -14,6 +14,7 @@ export interface UsePlayerReturn {
   reconnectAttempts: number;
   playerName: string | null;
   handleJoin: (name: string) => void;
+  handleRejoin: (name: string) => void;
   handleSubmitAnswer: (optionIndex: number) => void;
   onMessage: (handler: (msg: HostMessage) => void) => void;
   onError: (handler: (error: string) => void) => void;
@@ -325,6 +326,25 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
     conn.send(joinMsg);
   }, []);
 
+  /**
+   * Send a `rejoin` message to the host.
+   * Used when navigating between pages creates a new peer connection
+   * that the host doesn't recognize as the same player.
+   */
+  const handleRejoin = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const conn = connRef.current;
+    if (!conn || !conn.open) return;
+
+    const rejoinMsg: PlayerMessage = { type: 'rejoin', name: trimmed };
+    conn.send(rejoinMsg);
+
+    // Also update local refs so reconnection logic can use the name
+    playerNameRef.current = trimmed;
+  }, []);
+
   /** Submit an answer for the current question. */
   const handleSubmitAnswer = useCallback((optionIndex: number) => {
     const conn = connRef.current;
@@ -343,6 +363,7 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
     reconnectAttempts,
     playerName,
     handleJoin,
+    handleRejoin,
     handleSubmitAnswer,
     onMessage,
     onError,
