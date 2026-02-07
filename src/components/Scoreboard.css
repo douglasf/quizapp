@@ -1,0 +1,146 @@
+/* Scoreboard — shared component */
+.scoreboard {
+  width: 100%;
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+.scoreboard-title {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+/* Podium layout for top 3 */
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0 1rem;
+}
+
+.podium-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  max-width: 8rem;
+}
+
+.podium-badge {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.podium-place:nth-child(1) .podium-badge { font-size: 1.75rem; }
+.podium-place:nth-child(2) .podium-badge { font-size: 2.5rem; }
+.podium-place:nth-child(3) .podium-badge { font-size: 1.75rem; }
+
+.podium-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.125rem;
+  word-break: break-word;
+}
+
+.podium-score {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.podium-bar {
+  width: 100%;
+  border-radius: 0.5rem 0.5rem 0 0;
+  min-width: 3rem;
+}
+
+/* 2nd place — left */
+.podium-place:nth-child(1) .podium-bar {
+  height: 4rem;
+  background-color: #c0c0c0;
+}
+
+/* 1st place — center */
+.podium-place:nth-child(2) .podium-bar {
+  height: 6rem;
+  background-color: #ffd700;
+}
+
+/* 3rd place — right */
+.podium-place:nth-child(3) .podium-bar {
+  height: 3rem;
+  background-color: #cd7f32;
+}
+
+/* Ranked list */
+.standings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.standings-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  gap: 0.75rem;
+}
+
+.standings-item:last-child {
+  border-bottom: none;
+}
+
+.standings-item--highlight {
+  background-color: #eef2ff;
+  border-radius: 0.5rem;
+  border-bottom-color: transparent;
+}
+
+.standings-rank {
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 2rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+.standings-name {
+  flex: 1;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.standings-score {
+  font-weight: 600;
+  color: #4f46e5;
+  white-space: nowrap;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .podium-score {
+    color: #9ca3af;
+  }
+
+  .standings-item {
+    border-bottom-color: #374151;
+  }
+
+  .standings-item--highlight {
+    background-color: #1e1b4b;
+    border-bottom-color: transparent;
+  }
+
+  .standings-rank {
+    color: #9ca3af;
+  }
+
+  .standings-score {
+    color: #818cf8;
+  }
+}
