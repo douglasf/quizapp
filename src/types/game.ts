@@ -1,3 +1,5 @@
+import type { QuestionType } from './quiz';
+
 // Game state and player structures
 
 export interface Player {
@@ -14,6 +16,10 @@ export interface AnswerSummaryResult {
   name: string;
   correct: boolean;
   scoreGained: number;
+  /** For slider questions: the player's numeric answer (undefined if they didn't answer) */
+  playerAnswer?: number;
+  /** For slider questions: distance from correct answer */
+  closeness?: number;
 }
 
 // Player-side minimal state
@@ -34,6 +40,10 @@ export interface PlayerQuestion {
   total: number;
   text: string;
   options: [string, string, string, string];
+  timeLimitSeconds: number;
+  questionType: QuestionType;
+  sliderMin?: number; // minimum slider value (defaults to 0)
+  sliderMax?: number; // maximum slider value (defaults to 100)
 }
 
 export interface PlayerStanding {
