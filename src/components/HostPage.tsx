@@ -66,6 +66,9 @@ function QuestionPhase({
   const activeLabels = OPTION_LABELS.slice(0, optionCount);
   const activeColors = OPTION_COLORS.slice(0, optionCount);
 
+  // Check if this question has image options (parallel array to options[])
+  const hasImageOptions = Array.isArray(currentQuestion.imageOptions) && currentQuestion.imageOptions.length > 0;
+
   const questionFitText = useFitText({ maxFontSize: 36, minFontSize: 18, content: currentQuestion.text });
   // Independent font sizing for each answer option box (always call 4 hooks — rules of hooks)
   const answerFitText0 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[0] });
@@ -191,20 +194,34 @@ function QuestionPhase({
           </div>
         )}
 
-        {/* ── Multi-choice options (vertical list) ── */}
+        {/* ── Multi-choice options (vertical list / image grid) ── */}
         {isMultiChoice && (
-          <div className="host-options-list">
+          <div className={`host-options-list${hasImageOptions ? ' host-options-list--images' : ''}`}>
             {currentQuestion.options.map((option, idx) => {
               const isRevealed = phase === 'answer_reveal';
               const isCorrect = correctIndices.includes(idx);
               let itemClass = 'host-option-item host-option-item--multi-choice';
               if (isRevealed && isCorrect) itemClass += ' host-option-item--correct';
               if (isRevealed && !isCorrect) itemClass += ' host-option-item--incorrect';
+              if (hasImageOptions) itemClass += ' host-option-item--has-image';
+
+              const imageUrl = hasImageOptions ? (currentQuestion.imageOptions ?? [])[idx] : undefined;
 
               return (
-                <div key={`mc-option-${idx}`} className={itemClass}>
-                  <span className="option-label">{String.fromCharCode(65 + idx)}</span>
-                  <span className="option-text">{option}</span>
+                <div
+                  key={`mc-option-${idx}`}
+                  className={itemClass}
+                  style={imageUrl ? {
+                    backgroundImage: `url(${imageUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center center',
+                    backgroundRepeat: 'no-repeat',
+                  } : undefined}
+                >
+                  <span className={`option-label${imageUrl ? ' option-label--badge' : ''}`}>{String.fromCharCode(65 + idx)}</span>
+                  {!imageUrl && (
+                    <span className="option-text">{option}</span>
+                  )}
                   {isRevealed && isCorrect && <span className="option-check">{'\u2713'}</span>}
                   {isRevealed && (
                     <span className="answer-distribution">
@@ -219,7 +236,7 @@ function QuestionPhase({
 
         {/* ── Option boxes (MC: 4, TF: 2, Slider: none) ── */}
         {optionCount > 0 && (
-          <div className={`host-options-grid${isTrueFalse ? ' host-options-grid--two' : ''}`}>
+          <div className={`host-options-grid${isTrueFalse ? ' host-options-grid--two' : ''}${hasImageOptions && !isTrueFalse ? ' host-options-grid--images' : ''}`}>
             {activeLabels.map((label, idx) => {
               const option = currentQuestion.options[idx];
               // Defensive: hardcode True/False labels for backward compat with old quiz JSON
@@ -231,16 +248,31 @@ function QuestionPhase({
               let optionClass = `host-option ${activeColors[idx]}`;
               if (isRevealed && isCorrect) optionClass += ' host-option--correct';
               if (isRevealed && !isCorrect) optionClass += ' host-option--incorrect';
+              if (hasImageOptions && !isTrueFalse) optionClass += ' host-option--has-image';
+
+              const imageUrl = !isTrueFalse && hasImageOptions
+                ? (currentQuestion.imageOptions ?? [])[idx]
+                : undefined;
 
               return (
                 <div 
                   key={`option-${label}`} 
                   ref={answerFitTexts[idx].ref as React.RefObject<HTMLDivElement | null>}
-                  style={{ fontSize: `${answerFitTexts[idx].fontSize}px` }}
+                  style={imageUrl
+                    ? {
+                        backgroundImage: `url(${imageUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center center',
+                        backgroundRepeat: 'no-repeat',
+                      }
+                    : { fontSize: `${answerFitTexts[idx].fontSize}px` }
+                  }
                   className={optionClass}
                 >
-                  <span className="host-option-label">{label}</span>
-                  <span>{displayText}</span>
+                  <span className={`host-option-label${imageUrl ? ' host-option-label--badge' : ''}`}>{label}</span>
+                  {!imageUrl && (
+                    <span>{displayText}</span>
+                  )}
                   {isRevealed && (
                     <span className="answer-distribution">
                       <span className="distribution-count">{answerDistribution[idx]}</span>

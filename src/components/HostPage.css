@@ -525,6 +525,148 @@
   opacity: 0.5;
 }
 
+/* ── Host Option Image (used in both MC grid and multi-choice list) ── */
+
+/* When option has a background-image, ensure the box fills with the image */
+.host-option--has-image {
+  position: relative;
+}
+
+/* MC grid with images: make option boxes taller and stack content vertically */
+.host-options-grid--images .host-option {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+  min-height: 8rem;
+  position: relative;
+  overflow: hidden;
+  border: none;
+}
+
+.host-options-grid--images .host-option-label {
+  align-self: flex-start;
+}
+
+/* Multi-choice list with images: make items taller for image display */
+.host-options-list--images .host-option-item {
+  min-height: 5rem;
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  border: none;
+}
+
+/* ── Circular letter badge (used on image options) ── */
+
+.host-option-label--badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  opacity: 1;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Badge background & text colors per answer color (standard MC) — matches the option card */
+.host-option--red .host-option-label--badge {
+  background-color: var(--color-answer-red);
+  color: var(--color-answer-red-text);
+}
+.host-option--blue .host-option-label--badge {
+  background-color: var(--color-answer-blue);
+  color: var(--color-answer-blue-text);
+}
+.host-option--yellow .host-option-label--badge {
+  background-color: var(--color-answer-yellow);
+  color: var(--color-answer-yellow-text);
+}
+.host-option--green .host-option-label--badge {
+  background-color: var(--color-answer-green);
+  color: var(--color-answer-green-text);
+}
+
+/* Multi-choice list badge (option-label--badge) */
+.option-label--badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.9rem;
+  opacity: 1;
+  min-width: unset;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Multi-choice badge colors per position (A=red, B=blue, C=yellow, D=green) */
+.host-option-item:nth-child(1) .option-label--badge {
+  background-color: var(--color-answer-red);
+  color: var(--color-answer-red-text);
+}
+.host-option-item:nth-child(2) .option-label--badge {
+  background-color: var(--color-answer-blue);
+  color: var(--color-answer-blue-text);
+}
+.host-option-item:nth-child(3) .option-label--badge {
+  background-color: var(--color-answer-yellow);
+  color: var(--color-answer-yellow-text);
+}
+.host-option-item:nth-child(4) .option-label--badge {
+  background-color: var(--color-answer-green);
+  color: var(--color-answer-green-text);
+}
+
+/* Answer distribution badge on image options — position bottom-right */
+.host-option--has-image > .answer-distribution,
+.host-option-item--has-image > .answer-distribution {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  margin-left: 0;
+}
+
+.host-option--has-image > .answer-distribution .distribution-count,
+.host-option-item--has-image > .answer-distribution .distribution-count {
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+}
+
+/* Correct check on image multi-choice options */
+.host-option-item--has-image > .option-check {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  background-color: rgba(0, 0, 0, 0.5);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-success);
+}
+
 /* ── Host Multi-choice Options List ── */
 
 .host-options-list {
@@ -1112,6 +1254,33 @@
   .host-game-container:has(.question-header-bar) .host-option > span:not(.answer-distribution) {
     min-width: 0;
     overflow-wrap: break-word;
+  }
+
+  /* Image options in landscape: fill grid cells with background images */
+  .host-game-container:has(.question-header-bar) .host-options-grid--images .host-option {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .host-game-container:has(.question-header-bar) .host-options-grid--images .host-option-label {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+    opacity: 1;
+  }
+
+  /* Multi-choice image options in landscape */
+  .host-game-container:has(.question-header-bar) .host-options-list--images .host-option-item {
+    min-height: 4rem;
+    position: relative;
+    overflow: hidden;
+    padding: 0;
   }
 
   .host-game-container:has(.question-header-bar) .host-option-label {
