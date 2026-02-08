@@ -73,7 +73,15 @@ function QuizImport() {
   function handleHostCreatedQuiz() {
     if (!createdQuiz) return
     // Move quiz to imported key so host lobby can pick it up
-    localStorage.setItem(IMPORTED_QUIZ_KEY, JSON.stringify(createdQuiz))
+    try {
+      localStorage.setItem(IMPORTED_QUIZ_KEY, JSON.stringify(createdQuiz))
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
+        return
+      }
+      throw err
+    }
     localStorage.removeItem(CREATED_QUIZ_KEY)
     navigate('/host')
   }
@@ -100,7 +108,15 @@ function QuizImport() {
     }
 
     // Valid quiz — store and navigate
-    localStorage.setItem(IMPORTED_QUIZ_KEY, JSON.stringify(parsed))
+    try {
+      localStorage.setItem(IMPORTED_QUIZ_KEY, JSON.stringify(parsed))
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
+        return
+      }
+      throw err
+    }
     localStorage.removeItem(CREATED_QUIZ_KEY)
     setImportSuccess(true)
 

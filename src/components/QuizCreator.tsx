@@ -39,7 +39,12 @@ function createEmptyQuestion(questionType: QuestionType = 'multiple_choice'): Qu
 function stripIds(questions: (Question & { _id?: number })[]): Question[] {
   return questions.map(q => {
     const qType = q.type ?? 'multiple_choice';
-    const base = { text: q.text, timeLimitSeconds: q.timeLimitSeconds, type: q.type };
+    const base = {
+      text: q.text,
+      timeLimitSeconds: q.timeLimitSeconds,
+      type: q.type,
+      ...(q.image ? { image: q.image } : {}),
+    };
 
     if (qType === 'slider') {
       // Slider questions don't use options/correctIndex — provide sensible defaults
@@ -73,6 +78,52 @@ function stripIds(questions: (Question & { _id?: number })[]): Question[] {
 
 type QuestionWithId = Question & { _id: number };
 
+const COMPRESS_THRESHOLD = 100 * 1024; // 100 KB — only compress files larger than this
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawDataUrl = e.target?.result as string;
+
+      // If file is small enough, skip compression
+      if (file.size <= COMPRESS_THRESHOLD) {
+        resolve(rawDataUrl);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const maxDim = 800;
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(rawDataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        // Try WebP first, fall back to JPEG
+        const webpUrl = canvas.toDataURL('image/webp', 0.65);
+        const jpegUrl = canvas.toDataURL('image/jpeg', 0.70);
+        // Use whichever is smaller, or WebP if roughly equal
+        resolve(webpUrl.length <= jpegUrl.length ? webpUrl : jpegUrl);
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = rawDataUrl;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function QuizCreator() {
   const navigate = useNavigate()
 
@@ -94,6 +145,9 @@ function QuizCreator() {
   const [editedSliderMax, setEditedSliderMax] = useState(false)
   const [editedCorrectValue, setEditedCorrectValue] = useState(false)
   const [editedTimeLimit, setEditedTimeLimit] = useState(false)
+
+  // Image upload state: tracks which question is currently compressing
+  const [compressingImage, setCompressingImage] = useState<number | null>(null)
 
   function updateQuestion(index: number, updated: QuestionWithId) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? updated : q)))
@@ -213,6 +267,25 @@ function QuizCreator() {
     })
   }
 
+  async function handleImageUpload(index: number, file: File) {
+    const isLarge = file.size > COMPRESS_THRESHOLD
+    if (isLarge) setCompressingImage(index)
+    try {
+      const dataUrl = await compressImage(file)
+      const q = questions[index]
+      updateQuestion(index, { ...q, image: dataUrl })
+    } catch {
+      // Silently fail — could show error but keeping UX simple
+    } finally {
+      if (isLarge) setCompressingImage(null)
+    }
+  }
+
+  function removeImage(index: number) {
+    const q = questions[index]
+    updateQuestion(index, { ...q, image: undefined })
+  }
+
   function handleSave() {
     const quiz: Quiz = {
       title: title.trim(),
@@ -231,7 +304,16 @@ function QuizCreator() {
     setErrors([])
 
     // Store quiz in localStorage so the import screen can access it
-    localStorage.setItem('quizapp_created_quiz', JSON.stringify(quiz))
+    try {
+      localStorage.setItem('quizapp_created_quiz', JSON.stringify(quiz))
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
+        errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+      throw err
+    }
     navigate('/import')
   }
 
@@ -325,6 +407,47 @@ function QuizCreator() {
                   value={q.text}
                   onChange={(e) => updateQuestionText(qIndex, e.target.value)}
                 />
+              </div>
+
+              {/* Question image upload */}
+              <div className="image-input-group">
+                <label htmlFor={`q-${q._id}-image`} className="form-label">
+                  Image (optional)
+                </label>
+                {q.image ? (
+                  <div className="image-preview-row">
+                    <img
+                      src={q.image}
+                      alt={`Question ${qIndex + 1} preview`}
+                      className="image-preview-thumbnail"
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-remove-image"
+                      onClick={() => removeImage(qIndex)}
+                    >
+                      Remove image
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      id={`q-${q._id}-image`}
+                      type="file"
+                      accept="image/*"
+                      className="file-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleImageUpload(qIndex, file)
+                        // Reset so the same file can be re-selected
+                        e.target.value = ''
+                      }}
+                    />
+                    {compressingImage === qIndex && (
+                      <p className="hint">Compressing image...</p>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Question type selector */}

@@ -382,6 +382,15 @@
   color: var(--color-text-dark);
 }
 
+/* Question image (optional, rendered above question text) */
+.question-image {
+  max-height: 40vh;
+  max-width: 100%;
+  object-fit: contain;
+  margin-bottom: 10px;
+  border-radius: 4px;
+}
+
 /* Answer options grid */
 .host-options-grid {
   display: grid;
@@ -600,14 +609,14 @@
 
 /* Timer bar (above answer options during question phase) */
 .host-timer-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
 }
 
 .host-timer-track {
-  flex: 1;
+  grid-column: 1;
   height: 8px;
   background-color: var(--color-border);
   border-radius: 4px;
@@ -626,11 +635,12 @@
 }
 
 .host-timer-text {
+  grid-column: 2;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.25rem;
-  min-width: 3rem;
-  text-align: right;
+  width: 3rem;
+  text-align: center;
   color: var(--color-text-body);
 }
 
@@ -992,14 +1002,14 @@
 
   /* Expand game container to use landscape width */
   .host-game-container {
-    max-width: min(90vw, 100rem);
+    max-width: min(95vw, 100rem);
   }
 
   /* ── Question + Answer Reveal: 2-column grid layout ── */
 
   .host-game-container:has(.question-header-bar) {
     display: grid;
-    grid-template-columns: 40% 60%;
+    grid-template-columns: 2fr 3fr;
     grid-template-rows: auto 1fr auto;
     gap: 0 1.5rem;
     align-items: start;
@@ -1029,10 +1039,17 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 1rem 0;
     min-height: 0;
     max-height: calc(100vh - 2rem);
     overflow: hidden;
+  }
+
+  /* Question image in landscape: constrain to left column */
+  .host-game-container:has(.question-header-bar) .question-image {
+    max-height: 40vh;
+    max-width: 100%;
+    object-fit: contain;
+    flex-shrink: 1;
   }
 
   .host-game-container:has(.question-header-bar) .question-text {
@@ -1052,7 +1069,7 @@
     align-self: stretch;
     grid-template-rows: 1fr 1fr;
     gap: 1rem 0.75rem;
-    margin: 1rem 0;
+    margin: 0.4rem 0 1.25rem 0;
   }
 
   /* True/False in landscape: single row of 2 */

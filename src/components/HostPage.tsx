@@ -136,6 +136,13 @@ function QuestionPhase({
           style={{ fontSize: `${questionFitText.fontSize}px` }}
           className="question-header-bar"
         >
+          {currentQuestion.image && (
+            <img
+              src={currentQuestion.image}
+              alt="Question"
+              className="question-image"
+            />
+          )}
           <div className="question-counter">
             Question {questionIndex + 1} of {totalQuestions}
           </div>
