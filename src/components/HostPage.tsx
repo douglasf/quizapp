@@ -7,8 +7,10 @@ import { useHostUrl } from '../hooks/useHostUrl';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useFitText } from '../hooks/useFitText';
 import { generateGameCode } from '../utils/gameCode';
+import { calculateScore, isAnswerCorrect } from '../utils/scoring';
 import Scoreboard from './Scoreboard';
-import type { Quiz } from '../types/quiz';
+import type { Quiz, QuestionType } from '../types/quiz';
+import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz';
 import type { AnswerSummaryResult } from '../types/game';
 import './HostPage.css';
 
@@ -30,6 +32,8 @@ interface QuestionPhaseProps {
   answerDistribution: number[];
   answeredCount: number;
   totalPlayers: number;
+  timeLimitSeconds: number;
+  questionStartedAt: number;
   fullscreenButton: React.ReactNode;
   onRevealAnswer: () => void;
   onShowAnswerSummary: () => void;
@@ -44,22 +48,86 @@ function QuestionPhase({
   answerDistribution,
   answeredCount,
   totalPlayers,
+  timeLimitSeconds,
+  questionStartedAt,
   fullscreenButton,
   onRevealAnswer,
   onShowAnswerSummary,
 }: QuestionPhaseProps) {
+  const questionType = currentQuestion.type ?? 'multiple_choice';
+  const isSlider = questionType === 'slider';
+  const isTrueFalse = questionType === 'true_false';
+
+  // How many option boxes to render
+  const optionCount = isSlider ? 0 : isTrueFalse ? 2 : 4;
+  const activeLabels = OPTION_LABELS.slice(0, optionCount);
+  const activeColors = OPTION_COLORS.slice(0, optionCount);
+
   const questionFitText = useFitText({ maxFontSize: 36, minFontSize: 18, content: currentQuestion.text });
-  // Independent font sizing for each answer option box
+  // Independent font sizing for each answer option box (always call 4 hooks — rules of hooks)
   const answerFitText0 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[0] });
   const answerFitText1 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[1] });
-  const answerFitText2 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[2] });
-  const answerFitText3 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[3] });
+  const answerFitText2 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[2] ?? '' });
+  const answerFitText3 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[3] ?? '' });
   const answerFitTexts = [answerFitText0, answerFitText1, answerFitText2, answerFitText3];
+
+  // Timer state — countdown updates every 100ms during question phase
+  const [timeRemaining, setTimeRemaining] = useState(timeLimitSeconds);
+
+  useEffect(() => {
+    // Reset timer immediately when entering question phase or when question changes
+    setTimeRemaining(timeLimitSeconds);
+
+    if (phase !== 'question') return;
+
+    const update = () => {
+      const elapsed = (Date.now() - questionStartedAt) / 1000;
+      const remaining = Math.max(0, timeLimitSeconds - elapsed);
+      setTimeRemaining(remaining);
+    };
+
+    update(); // immediate
+    const interval = setInterval(update, 100);
+    return () => clearInterval(interval);
+  }, [phase, questionStartedAt, timeLimitSeconds]);
+
+  const timerProgress = phase === 'question'
+    ? Math.max(0, Math.min(1, timeRemaining / timeLimitSeconds))
+    : 0;
+
+  const timerIsLow = timeRemaining <= 5 && phase === 'question';
+
+  // Slider-specific: correctValue and range for reveal
+  const sliderCorrectValue = currentQuestion.correctValue ?? 50;
+  const sliderMin = currentQuestion.sliderMin ?? 0;
+  const sliderMax = currentQuestion.sliderMax ?? 100;
+  const sliderRange = sliderMax - sliderMin;
+  const sliderPercentage = sliderRange > 0 ? ((sliderCorrectValue - sliderMin) / sliderRange) * 100 : 0;
+
+  // Compute 5 evenly-spaced scale labels
+  const sliderLabels: number[] = [];
+  for (let i = 0; i <= 4; i++) {
+    sliderLabels.push(Math.round(sliderMin + (i / 4) * sliderRange));
+  }
 
   return (
     <div className="page host-game">
       <div className="host-game-container">
         {fullscreenButton}
+
+        {/* Timer bar — visible during question phase */}
+        {phase === 'question' && (
+          <div className={`host-timer-bar${timerIsLow ? ' host-timer-bar--low' : ''}`}>
+            <div className="host-timer-track">
+              <div
+                className="host-timer-fill"
+                style={{ width: `${timerProgress * 100}%` }}
+              />
+            </div>
+            <div className="host-timer-text">{Math.ceil(timeRemaining)}s</div>
+          </div>
+        )}
+
         <div 
           ref={questionFitText.ref as React.RefObject<HTMLDivElement | null>}
           style={{ fontSize: `${questionFitText.fontSize}px` }}
@@ -75,33 +143,78 @@ function QuestionPhase({
           </h1>
         </div>
 
-        {/* Answer options */}
-        <div className="host-options-grid">
-          {currentQuestion.options.map((option, idx) => {
-            const isRevealed = phase === 'answer_reveal';
-            const isCorrect = idx === correctIndex;
-            let optionClass = `host-option ${OPTION_COLORS[idx]}`;
-            if (isRevealed && isCorrect) optionClass += ' host-option--correct';
-            if (isRevealed && !isCorrect) optionClass += ' host-option--incorrect';
-
-            return (
-              <div 
-                key={`option-${OPTION_LABELS[idx]}`} 
-                ref={answerFitTexts[idx].ref as React.RefObject<HTMLDivElement | null>}
-                style={{ fontSize: `${answerFitTexts[idx].fontSize}px` }}
-                className={optionClass}
-              >
-                <span className="host-option-label">{OPTION_LABELS[idx]}</span>
-                <span>{option}</span>
-                {isRevealed && (
-                  <span className="answer-distribution">
-                    <span className="distribution-count">{answerDistribution[idx]}</span>
-                  </span>
-                )}
+        {/* ── Slider display ── */}
+        {isSlider && (
+          <div className="host-slider-display">
+            {phase === 'question' ? (
+              <div className="host-slider-waiting">
+                <div className="host-slider-track-visual">
+                  <div className="host-slider-track-bg" />
+                  <div className="host-slider-scale">
+                    {sliderLabels.map((label, idx) => (
+                      <span key={`q-${idx}-${label}`} className="host-slider-label">{label}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="host-slider-hint">Players are choosing a value...</div>
               </div>
-            );
-          })}
-        </div>
+            ) : (
+              <div className="host-slider-reveal">
+                <div className="host-slider-track-visual">
+                  <div className="host-slider-track-bg" />
+                  <div
+                    className="host-slider-marker"
+                    style={{ left: `${sliderPercentage}%` }}
+                  >
+                    <div className="host-slider-marker-dot" />
+                    <div className="host-slider-marker-label">{sliderCorrectValue}</div>
+                  </div>
+                  <div className="host-slider-scale">
+                    {sliderLabels.map((label, idx) => (
+                      <span key={`r-${idx}-${label}`} className="host-slider-label">{label}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="host-slider-value">Correct answer: {sliderCorrectValue}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Option boxes (MC: 4, TF: 2, Slider: none) ── */}
+        {optionCount > 0 && (
+          <div className={`host-options-grid${isTrueFalse ? ' host-options-grid--two' : ''}`}>
+            {activeLabels.map((label, idx) => {
+              const option = currentQuestion.options[idx];
+              // Defensive: hardcode True/False labels for backward compat with old quiz JSON
+              const displayText = isTrueFalse
+                ? (idx === 0 ? 'False' : 'True')
+                : option;
+              const isRevealed = phase === 'answer_reveal';
+              const isCorrect = idx === correctIndex;
+              let optionClass = `host-option ${activeColors[idx]}`;
+              if (isRevealed && isCorrect) optionClass += ' host-option--correct';
+              if (isRevealed && !isCorrect) optionClass += ' host-option--incorrect';
+
+              return (
+                <div 
+                  key={`option-${label}`} 
+                  ref={answerFitTexts[idx].ref as React.RefObject<HTMLDivElement | null>}
+                  style={{ fontSize: `${answerFitTexts[idx].fontSize}px` }}
+                  className={optionClass}
+                >
+                  <span className="host-option-label">{label}</span>
+                  <span>{displayText}</span>
+                  {isRevealed && (
+                    <span className="answer-distribution">
+                      <span className="distribution-count">{answerDistribution[idx]}</span>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Footer: answer counter + actions */}
         <div className="host-game-footer">
@@ -113,12 +226,12 @@ function QuestionPhase({
           <div className="host-game-actions">
             {phase === 'question' && (
               <button type="button" className="btn btn-reveal" onClick={onRevealAnswer} aria-label="Reveal Answer">
-                →
+                {'\u2192'}
               </button>
             )}
             {phase === 'answer_reveal' && (
               <button type="button" className="btn btn-primary" onClick={onShowAnswerSummary} aria-label="Who Got It Right?">
-                →
+                {'\u2192'}
               </button>
             )}
           </div>
@@ -157,6 +270,7 @@ function HostPage() {
   const currentQuestionIndexRef = useRef(state.currentQuestionIndex);
   const phaseRef = useRef(state.phase);
   const lastRevealResultsRef = useRef<AnswerSummaryResult[]>([]);
+  const questionStartedAtRef = useRef<number>(0);
 
   // Keep refs in sync with state
   currentQuestionIndexRef.current = state.currentQuestionIndex;
@@ -171,7 +285,7 @@ function HostPage() {
   // so they can sync to the correct game phase after reconnection.
   const onPlayerGetStateRef = useRef<((playerName: string) => void) | null>(null);
 
-  const { gameCode, players, broadcast, sendToPlayer, error: hostError, getAnswers, updatePlayerScore, resetScores, retryWithNewCode } = useHost(
+  const { gameCode, players, broadcast, sendToPlayer, error: hostError, getAnswers, getAnswerTimestamps, updatePlayerScore, resetScores, retryWithNewCode } = useHost(
     initialGameCode,
     currentQuestionIndexRef,
     phaseRef,
@@ -189,6 +303,8 @@ function HostPage() {
 
       // If we're in question or answer_reveal phase, send the current question
       if ((phase === 'question' || phase === 'answer_reveal') && question) {
+        const timeLimitSeconds = question.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS;
+        const questionType = question.type ?? 'multiple_choice';
         // Small delay to let the connection stabilize
         setTimeout(() => {
           sendToPlayer(playerName, {
@@ -197,6 +313,10 @@ function HostPage() {
             total: quiz.questions.length,
             text: question.text,
             options: question.options,
+            timeLimitSeconds,
+            questionType,
+            sliderMin: question.sliderMin ?? 0,
+            sliderMax: question.sliderMax ?? 100,
           });
         }, 200);
       }
@@ -213,6 +333,8 @@ function HostPage() {
 
       // If we're in question or answer_reveal phase, send the current question
       if ((phase === 'question' || phase === 'answer_reveal') && question) {
+        const timeLimitSeconds = question.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS;
+        const questionType = question.type ?? 'multiple_choice';
         // Small delay to let the connection stabilize after get_state response
         setTimeout(() => {
           sendToPlayer(playerName, {
@@ -221,6 +343,10 @@ function HostPage() {
             total: quiz.questions.length,
             text: question.text,
             options: question.options,
+            timeLimitSeconds,
+            questionType,
+            sliderMin: question.sliderMin ?? 0,
+            sliderMax: question.sliderMax ?? 100,
           });
         }, 200);
       }
@@ -295,12 +421,19 @@ function HostPage() {
 
     const question = quiz.questions[0];
     if (question) {
+      const timeLimitSeconds = question.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS;
+      const questionType = question.type ?? 'multiple_choice';
+      questionStartedAtRef.current = Date.now();
       broadcast({
         type: 'question',
         index: 0,
         total: quiz.questions.length,
         text: question.text,
         options: question.options,
+        timeLimitSeconds,
+        questionType,
+        sliderMin: question.sliderMin ?? 0,
+        sliderMax: question.sliderMax ?? 100,
       });
     }
   }, [connectedCount, quiz, startQuiz, broadcast]);
@@ -337,9 +470,12 @@ function HostPage() {
   // mutable answers Map. Iterating up to 20 entries is trivially cheap.
   const answerDistribution = (() => {
     const dist = [0, 0, 0, 0];
-    for (const optionIndex of hostAnswersForCurrent.values()) {
-      if (optionIndex >= 0 && optionIndex < 4) {
-        dist[optionIndex]++;
+    const qType = currentQuestion?.type ?? 'multiple_choice';
+    // For slider questions, distribution doesn't map to option indices
+    if (qType === 'slider') return dist;
+    for (const answer of hostAnswersForCurrent.values()) {
+      if (answer >= 0 && answer < 4) {
+        dist[answer]++;
       }
     }
     return dist;
@@ -350,24 +486,62 @@ function HostPage() {
 
     revealAnswer();
 
+    const questionStartedAt = questionStartedAtRef.current;
+    const timeLimitSeconds = currentQuestion.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS;
+    const questionType: QuestionType = currentQuestion.type ?? 'multiple_choice';
+    const correctAnswer = questionType === 'slider'
+      ? (currentQuestion.correctValue ?? 50)
+      : currentQuestion.correctIndex;
+
     // Compute and apply scores using useHost's answer data (for ALL players who answered)
     const answers = getAnswers(state.currentQuestionIndex);
+    const timestamps = getAnswerTimestamps(state.currentQuestionIndex);
     const revealResults: AnswerSummaryResult[] = [];
 
     for (const player of players.values()) {
-      const playerAnswer = answers.get(player.name.trim().toLowerCase());
-      const isCorrect = playerAnswer !== undefined && playerAnswer === currentQuestion.correctIndex;
+      const playerKey = player.name.trim().toLowerCase();
+      const playerAnswer = answers.get(playerKey);
 
-      // Award points for correct answers (even if disconnected)
-      if (isCorrect) {
-        updatePlayerScore(player.name, 100);
+      let scoreGained = 0;
+      let correct = false;
+
+      if (playerAnswer !== undefined) {
+        // Compute elapsed time
+        const answeredAt = timestamps.get(playerKey);
+        let elapsedMs: number;
+        if (answeredAt !== undefined && questionStartedAt > 0) {
+          elapsedMs = Math.max(0, answeredAt - questionStartedAt);
+        } else {
+          // Fallback: use current time (penalizes players without timestamp)
+          elapsedMs = Math.max(0, Date.now() - questionStartedAt);
+        }
+
+        scoreGained = calculateScore(
+          questionType,
+          playerAnswer,
+          correctAnswer,
+          elapsedMs,
+          timeLimitSeconds,
+          questionType === 'slider' ? {
+            min: currentQuestion.sliderMin ?? 0,
+            max: currentQuestion.sliderMax ?? 100,
+          } : undefined,
+        );
+        correct = isAnswerCorrect(questionType, playerAnswer, correctAnswer);
+
+        if (scoreGained > 0) {
+          updatePlayerScore(player.name, scoreGained);
+        }
       }
 
       // Track results for answer summary
       revealResults.push({
         name: player.name,
-        correct: isCorrect,
-        scoreGained: isCorrect ? 100 : 0,
+        correct,
+        scoreGained,
+        ...(questionType === 'slider' && playerAnswer !== undefined
+          ? { playerAnswer, closeness: Math.abs(playerAnswer - correctAnswer) }
+          : {}),
       });
     }
 
@@ -378,19 +552,31 @@ function HostPage() {
     for (const player of players.values()) {
       if (!player.connected) continue;
 
-      const playerAnswer = answers.get(player.name.trim().toLowerCase());
-      const isCorrect = playerAnswer !== undefined && playerAnswer === currentQuestion.correctIndex;
+      const playerKey = player.name.trim().toLowerCase();
+      const playerAnswer = answers.get(playerKey);
+      const correct = isAnswerCorrect(questionType, playerAnswer ?? -1, correctAnswer);
 
-      sendToPlayer(player.name, {
+      // Find this player's scoreGained from revealResults
+      const playerResult = revealResults.find(r => r.name === player.name);
+      const scoreGained = playerResult?.scoreGained ?? 0;
+
+      // Build the reveal message with type-specific fields
+      const revealMsg: Parameters<typeof sendToPlayer>[1] = {
         type: 'answer_reveal',
         questionIndex: state.currentQuestionIndex,
-        correctIndex: currentQuestion.correctIndex,
+        questionType,
+        correctAnswer,
         yourAnswer: playerAnswer ?? null,
-        correct: isCorrect,
-        scoreGained: isCorrect ? 100 : 0,
-      });
+        correct: playerAnswer !== undefined ? correct : false,
+        scoreGained,
+        ...(questionType === 'slider' && playerAnswer !== undefined
+          ? { closeness: Math.abs(playerAnswer - correctAnswer) }
+          : {}),
+      };
+
+      sendToPlayer(player.name, revealMsg);
     }
-  }, [quiz, currentQuestion, revealAnswer, players, getAnswers, state.currentQuestionIndex, sendToPlayer, updatePlayerScore]);
+  }, [quiz, currentQuestion, revealAnswer, players, getAnswers, getAnswerTimestamps, state.currentQuestionIndex, sendToPlayer, updatePlayerScore]);
 
   const handleShowAnswerSummary = useCallback(() => {
     showAnswerSummary();
@@ -403,12 +589,19 @@ function HostPage() {
     const nextIndex = state.currentQuestionIndex + 1;
     const nextQ = quiz?.questions[nextIndex];
     if (nextQ) {
+      const timeLimitSeconds = nextQ.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS;
+      const questionType = nextQ.type ?? 'multiple_choice';
+      questionStartedAtRef.current = Date.now();
       broadcast({
         type: 'question',
         index: nextIndex,
         total: totalQuestions,
         text: nextQ.text,
         options: nextQ.options,
+        timeLimitSeconds,
+        questionType,
+        sliderMin: nextQ.sliderMin ?? 0,
+        sliderMax: nextQ.sliderMax ?? 100,
       });
     }
   }, [nextQuestion, state.currentQuestionIndex, quiz, broadcast, totalQuestions]);
@@ -620,6 +813,8 @@ function HostPage() {
         answerDistribution={answerDistribution}
         answeredCount={answeredCount}
         totalPlayers={totalPlayers}
+        timeLimitSeconds={currentQuestion.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS}
+        questionStartedAt={questionStartedAtRef.current}
         fullscreenButton={fullscreenButton}
         onRevealAnswer={handleRevealAnswer}
         onShowAnswerSummary={handleShowAnswerSummary}
@@ -630,8 +825,14 @@ function HostPage() {
   // ─── Render: Answer Summary ───
 
   if (state.phase === 'answer_summary') {
-    // Sort results: correct first (alphabetical), then incorrect (alphabetical)
+    const currentQType: QuestionType = currentQuestion?.type ?? 'multiple_choice';
+    const isSliderSummary = currentQType === 'slider';
+
+    // Sort results: for slider, by score descending; for MC/TF, correct first then alphabetical
     const sortedResults = [...lastRevealResultsRef.current].sort((a, b) => {
+      if (isSliderSummary) {
+        return b.scoreGained - a.scoreGained || a.name.localeCompare(b.name);
+      }
       if (a.correct !== b.correct) return a.correct ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
@@ -641,18 +842,36 @@ function HostPage() {
         <div className="host-game-container">
           {fullscreenButton}
           <div className="answer-summary-section">
-            <h2 className="answer-summary-title">Who Got It Right?</h2>
+            <h2 className="answer-summary-title">
+              {isSliderSummary ? 'How Close Were They?' : 'Who Got It Right?'}
+            </h2>
             <div className="answer-summary-list">
-              {sortedResults.map((result) => (
-                <div
-                  key={result.name}
-                  className={`answer-summary-item ${result.correct ? 'answer-summary-item--correct' : 'answer-summary-item--wrong'}`}
-                >
-                  <span className="answer-summary-result">{result.correct ? '\u2713' : '\u2717'}</span>
-                  <span className="answer-summary-name">{result.name}</span>
-                  <span className="answer-summary-points">+{result.scoreGained} pts</span>
-                </div>
-              ))}
+              {sortedResults.map((result) => {
+                // For slider: color by score tier instead of binary correct/wrong
+                const isSliderGood = isSliderSummary && result.scoreGained >= 500;
+                const itemClass = isSliderSummary
+                  ? `answer-summary-item ${isSliderGood ? 'answer-summary-item--correct' : 'answer-summary-item--wrong'}`
+                  : `answer-summary-item ${result.correct ? 'answer-summary-item--correct' : 'answer-summary-item--wrong'}`;
+
+                return (
+                  <div key={result.name} className={itemClass}>
+                    {isSliderSummary ? (
+                      <span className="answer-summary-result answer-summary-result--slider">
+                        {result.playerAnswer !== undefined ? result.playerAnswer : '—'}
+                      </span>
+                    ) : (
+                      <span className="answer-summary-result">{result.correct ? '\u2713' : '\u2717'}</span>
+                    )}
+                    <span className="answer-summary-name">{result.name}</span>
+                    {isSliderSummary && result.closeness !== undefined && (
+                      <span className="answer-summary-closeness">
+                        {result.closeness === 0 ? 'Perfect!' : `off by ${result.closeness}`}
+                      </span>
+                    )}
+                    <span className="answer-summary-points">+{result.scoreGained} pts</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

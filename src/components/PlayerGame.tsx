@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlayer } from '../hooks/usePlayer';
 import Scoreboard from './Scoreboard';
 import type { PlayerQuestion, PlayerStanding } from '../types/game';
 import type { HostMessage } from '../types/messages';
+import type { QuestionType } from '../types/quiz';
 import './PlayerGame.css';
 
 const ANSWER_COLORS = ['answer-btn--red', 'answer-btn--blue', 'answer-btn--yellow', 'answer-btn--green'] as const;
@@ -12,10 +13,12 @@ const ANSWER_LABELS = ['A', 'B', 'C', 'D'] as const;
 type PlayerPhase = 'waiting' | 'answering' | 'submitted' | 'reveal' | 'finished';
 
 interface RevealData {
-  correctIndex: number;
+  questionType: QuestionType;
+  correctAnswer: number; // correctIndex for MC/TF, correctValue for slider
   yourAnswer: number | null;
   correct: boolean;
   scoreGained: number;
+  closeness?: number; // slider only: distance from correct answer
 }
 
 function PlayerGame() {
@@ -48,6 +51,16 @@ function PlayerGame() {
   const [showReconnectedToast, setShowReconnectedToast] = useState(false);
   const [prevConnectionStatus, setPrevConnectionStatus] = useState(connectionStatus);
   const [hasGotStateRef] = useState(() => ({ current: false }));
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const questionStartedAtRef = useRef<number>(0);
+  const timerExpiredRef = useRef(false);
+
+  const [sliderValue, setSliderValue] = useState(50);
+
+  // Derived question type for the current question
+  const questionType: QuestionType = (currentQuestion?.questionType as QuestionType) ?? 'multiple_choice';
+  const isSlider = questionType === 'slider';
+  const isTrueFalse = questionType === 'true_false';
 
   // Send get_state message when connection opens so the host sends us the current game state
   useEffect(() => {
@@ -91,15 +104,25 @@ function PlayerGame() {
         break;
       }
       case 'question': {
+        const qSliderMin = msg.sliderMin ?? 0;
+        const qSliderMax = msg.sliderMax ?? 100;
         setCurrentQuestion({
           index: msg.index,
           total: msg.total,
           text: msg.text,
           options: msg.options,
+          timeLimitSeconds: msg.timeLimitSeconds,
+          questionType: msg.questionType,
+          sliderMin: qSliderMin,
+          sliderMax: qSliderMax,
         });
         setSelectedAnswer(null);
         setRevealData(null);
+        setSliderValue(Math.round((qSliderMin + qSliderMax) / 2));
         setPhase('answering');
+        questionStartedAtRef.current = Date.now();
+        timerExpiredRef.current = false;
+        setTimeRemaining(msg.timeLimitSeconds);
         break;
       }
       case 'answer_ack': {
@@ -108,10 +131,12 @@ function PlayerGame() {
       }
       case 'answer_reveal': {
         setRevealData({
-          correctIndex: msg.correctIndex,
+          questionType: msg.questionType,
+          correctAnswer: msg.correctAnswer,
           yourAnswer: msg.yourAnswer,
           correct: msg.correct,
           scoreGained: msg.scoreGained,
+          closeness: msg.closeness,
         });
         setPhase('reveal');
         break;
@@ -139,11 +164,38 @@ function PlayerGame() {
     onMessage(handleMessage);
   }, [onMessage, handleMessage]);
 
+  // Timer countdown during answering phase
+  useEffect(() => {
+    if (phase !== 'answering' || !currentQuestion) return;
+
+    const timeLimitMs = currentQuestion.timeLimitSeconds * 1000;
+
+    const update = () => {
+      const elapsed = Date.now() - questionStartedAtRef.current;
+      const remaining = Math.max(0, (timeLimitMs - elapsed) / 1000);
+      setTimeRemaining(remaining);
+
+      if (remaining <= 0 && !timerExpiredRef.current) {
+        timerExpiredRef.current = true;
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 100);
+    return () => clearInterval(interval);
+  }, [phase, currentQuestion]);
+
   const handleAnswerClick = useCallback((optionIndex: number) => {
-    if (phase !== 'answering' || selectedAnswer !== null) return;
+    if (phase !== 'answering' || selectedAnswer !== null || timerExpiredRef.current) return;
     setSelectedAnswer(optionIndex);
     handleSubmitAnswer(optionIndex);
   }, [phase, selectedAnswer, handleSubmitAnswer]);
+
+  const handleSliderSubmit = useCallback(() => {
+    if (phase !== 'answering' || selectedAnswer !== null || timerExpiredRef.current) return;
+    setSelectedAnswer(sliderValue);
+    handleSubmitAnswer(sliderValue);
+  }, [phase, selectedAnswer, sliderValue, handleSubmitAnswer]);
 
   const handleRefresh = useCallback(() => {
     window.location.reload();
@@ -227,26 +279,100 @@ function PlayerGame() {
               <h1 className="player-question-text">{currentQuestion.text}</h1>
             </div>
 
-            <div className="answer-grid">
-              {currentQuestion.options.map((option, idx) => {
-                let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
-                if (selectedAnswer === idx) btnClass += ' answer-btn--selected';
-                if (selectedAnswer !== null && selectedAnswer !== idx) btnClass += ' answer-btn--disabled-other';
+            {/* Timer display */}
+            {timeRemaining !== null && (
+              <div className={`player-timer${(timeRemaining <= 5) ? ' player-timer--low' : ''}${timerExpiredRef.current ? ' player-timer--expired' : ''}`}>
+                <div className="player-timer-track">
+                  <div
+                    className="player-timer-fill"
+                    style={{ width: `${Math.max(0, Math.min(100, (timeRemaining / currentQuestion.timeLimitSeconds) * 100))}%` }}
+                  />
+                </div>
+                <div className="player-timer-text">
+                  {timerExpiredRef.current ? "Time's up!" : `${Math.ceil(timeRemaining)}s`}
+                </div>
+              </div>
+            )}
 
-                return (
-                  <button
-                    key={`answer-${ANSWER_LABELS[idx]}`}
-                    type="button"
-                    className={btnClass}
-                    onClick={() => handleAnswerClick(idx)}
-                    disabled={selectedAnswer !== null}
-                  >
-                    <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
-                    {option}
-                  </button>
-                );
-              })}
-            </div>
+            {/* ── Slider input ── */}
+            {isSlider && (() => {
+              const pSliderMin = currentQuestion.sliderMin ?? 0;
+              const pSliderMax = currentQuestion.sliderMax ?? 100;
+              const pRange = pSliderMax - pSliderMin;
+              const pLabels: number[] = [];
+              for (let i = 0; i <= 4; i++) {
+                pLabels.push(Math.round(pSliderMin + (i / 4) * pRange));
+              }
+              return (
+              <div className="player-slider-section">
+                {selectedAnswer === null && !timerExpiredRef.current ? (
+                  <>
+                    <div className="player-slider-value-display">{sliderValue}</div>
+                    <input
+                      type="range"
+                      className="player-slider-input"
+                      min={pSliderMin}
+                      max={pSliderMax}
+                      step={1}
+                      value={sliderValue}
+                      onChange={(e) => setSliderValue(Number(e.target.value))}
+                    />
+                    <div className="player-slider-scale">
+                      {pLabels.map((label, idx) => (
+                        <span key={`ps-${idx}-${label}`}>{label}</span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary player-slider-submit"
+                      onClick={handleSliderSubmit}
+                    >
+                      Submit: {sliderValue}
+                    </button>
+                  </>
+                ) : (
+                  <div className="player-slider-submitted">
+                    <div className="player-slider-value-display player-slider-value-display--submitted">
+                      {selectedAnswer ?? '—'}
+                    </div>
+                    <div className="player-slider-submitted-label">
+                      {timerExpiredRef.current && selectedAnswer === null ? "Time's up!" : 'Answer locked in!'}
+                    </div>
+                  </div>
+                )}
+              </div>
+              );
+            })()}
+
+            {/* ── MC / TF option buttons ── */}
+            {!isSlider && (
+              <div className={`answer-grid${isTrueFalse ? ' answer-grid--two' : ''}`}>
+                {currentQuestion.options.slice(0, isTrueFalse ? 2 : 4).map((option, idx) => {
+                  // Defensive: hardcode True/False labels for backward compat with old quiz JSON
+                  const displayText = isTrueFalse
+                    ? (idx === 0 ? 'False' : 'True')
+                    : option;
+                  const isExpired = timerExpiredRef.current;
+                  let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
+                  if (selectedAnswer === idx) btnClass += ' answer-btn--selected';
+                  if (selectedAnswer !== null && selectedAnswer !== idx) btnClass += ' answer-btn--disabled-other';
+                  if (isExpired && selectedAnswer === null) btnClass += ' answer-btn--disabled-other';
+
+                  return (
+                    <button
+                      key={`answer-${ANSWER_LABELS[idx]}`}
+                      type="button"
+                      className={btnClass}
+                      onClick={() => handleAnswerClick(idx)}
+                      disabled={selectedAnswer !== null || isExpired}
+                    >
+                      <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
+                      {displayText}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -269,33 +395,69 @@ function PlayerGame() {
               <h1 className="player-question-text">{currentQuestion.text}</h1>
             </div>
 
-            <div className="answer-grid answer-grid--reveal">
-              {currentQuestion.options.map((option, idx) => {
-                let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
-                const isCorrectAnswer = idx === revealData.correctIndex;
-                const isPlayerAnswer = idx === revealData.yourAnswer;
+            {/* MC / TF reveal: show option grid with correct/incorrect highlighting */}
+            {(revealData.questionType === 'multiple_choice' || revealData.questionType === 'true_false') && (() => {
+              const revealCount = revealData.questionType === 'true_false' ? 2 : 4;
+              return (
+                <div className={`answer-grid answer-grid--reveal${revealData.questionType === 'true_false' ? ' answer-grid--two' : ''}`}>
+                  {currentQuestion.options.slice(0, revealCount).map((option, idx) => {
+                    // Defensive: hardcode True/False labels for backward compat with old quiz JSON
+                    const displayText = revealData.questionType === 'true_false'
+                      ? (idx === 0 ? 'False' : 'True')
+                      : option;
+                    let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
+                    const isCorrectAnswer = idx === revealData.correctAnswer;
+                    const isPlayerAnswer = idx === revealData.yourAnswer;
 
-                if (isCorrectAnswer) {
-                  btnClass += ' answer-btn--correct-answer';
-                } else if (isPlayerAnswer) {
-                  btnClass += ' answer-btn--wrong-answer';
-                } else {
-                  btnClass += ' answer-btn--disabled-other';
-                }
+                    if (isCorrectAnswer) {
+                      btnClass += ' answer-btn--correct-answer';
+                    } else if (isPlayerAnswer) {
+                      btnClass += ' answer-btn--wrong-answer';
+                    } else {
+                      btnClass += ' answer-btn--disabled-other';
+                    }
 
-                return (
-                  <button
-                    key={`reveal-${ANSWER_LABELS[idx]}`}
-                    type="button"
-                    className={btnClass}
-                    disabled
-                  >
-                    <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
-                    {option}
-                  </button>
-                );
-              })}
-            </div>
+                    return (
+                      <button
+                        key={`reveal-${ANSWER_LABELS[idx]}`}
+                        type="button"
+                        className={btnClass}
+                        disabled
+                      >
+                        <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
+                        {displayText}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Slider reveal: show numeric answer comparison */}
+            {revealData.questionType === 'slider' && (
+              <div className="slider-reveal">
+                <div className="slider-reveal-values">
+                  <div className="slider-reveal-item">
+                    <span className="slider-reveal-label">Your answer</span>
+                    <span className="slider-reveal-value">{revealData.yourAnswer ?? '—'}</span>
+                  </div>
+                  <div className="slider-reveal-item">
+                    <span className="slider-reveal-label">Correct answer</span>
+                    <span className="slider-reveal-value slider-reveal-value--correct">{revealData.correctAnswer}</span>
+                  </div>
+                </div>
+                {revealData.closeness !== undefined && revealData.closeness > 0 && (
+                  <div className="slider-reveal-closeness">
+                    Off by {revealData.closeness} point{revealData.closeness !== 1 ? 's' : ''}
+                  </div>
+                )}
+                {revealData.closeness === 0 && (
+                  <div className="slider-reveal-closeness slider-reveal-closeness--perfect">
+                    Perfect answer!
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className={`points-display ${revealData.scoreGained > 0 ? 'points-display--positive' : 'points-display--zero'}`}>
               {revealData.scoreGained > 0 ? `+${revealData.scoreGained} points!` : '0 points'}

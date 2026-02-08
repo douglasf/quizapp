@@ -16,7 +16,7 @@ export interface UsePlayerReturn {
   handleJoin: (name: string) => void;
   handleRejoin: (name: string) => void;
   handleGetState: (name: string) => void;
-  handleSubmitAnswer: (optionIndex: number) => void;
+  handleSubmitAnswer: (answer: number) => void;
   onMessage: (handler: (msg: HostMessage) => void) => void;
   onError: (handler: (error: string) => void) => void;
   isLoading: boolean;
@@ -201,10 +201,6 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
       reconnectAttemptsRef.current += 1;
       setReconnectAttempts(reconnectAttemptsRef.current);
 
-      console.log(
-        `[usePlayer] Reconnect attempt ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS}`,
-      );
-
       // Destroy old peer if it exists
       if (peerRef.current && !peerRef.current.destroyed) {
         peerRef.current.destroy();
@@ -264,14 +260,12 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
 
     peer.on('open', () => {
       if (unmountedRef.current) return;
-      console.log(`[usePlayer] Peer open with ID: ${peer.id}`);
 
       const conn = peer.connect(`quiz-${gameCode}`, { reliable: true });
       connRef.current = conn;
 
       conn.on('open', () => {
         if (unmountedRef.current) return;
-        console.log('[usePlayer] Connected to host');
         setConnectionStatus('connected');
       });
 
@@ -377,14 +371,15 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
   }, []);
 
   /** Submit an answer for the current question. */
-  const handleSubmitAnswer = useCallback((optionIndex: number) => {
+  const handleSubmitAnswer = useCallback((answer: number) => {
     const conn = connRef.current;
     if (!conn || !conn.open) return;
 
     const answerMsg: PlayerMessage = {
       type: 'answer',
       questionIndex: currentQuestionIndexRef.current,
-      optionIndex,
+      answer,
+      answeredAt: Date.now(),
     };
     conn.send(answerMsg);
   }, []);

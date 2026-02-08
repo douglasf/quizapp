@@ -20,8 +20,9 @@ export interface UseHostReturn {
   players: Map<string, Player>;
   broadcast: (msg: HostMessage) => void;
   sendToPlayer: (playerName: string, msg: HostMessage) => void;
-  addAnswer: (playerName: string, questionIndex: number, optionIndex: number) => void;
+  addAnswer: (playerName: string, questionIndex: number, answer: number, answeredAt?: number) => void;
   getAnswers: (questionIndex: number) => Map<string, number>;
+  getAnswerTimestamps: (questionIndex: number) => Map<string, number>;
   updatePlayerScore: (playerName: string, delta: number) => void;
   resetScores: () => void;
   retryWithNewCode: () => void;
@@ -54,8 +55,11 @@ export function useHost(
   const peerRef = useRef<Peer | null>(null);
   const connectionsRef = useRef<Map<string, DataConnection>>(new Map()); // keyed by peerId
   const playersRef = useRef<Map<string, Player>>(new Map()); // keyed by player name (lowercase)
-  // answers per question: Map<questionIndex, Map<playerName, optionIndex>>
+  // answers per question: Map<questionIndex, Map<playerName, answer>>
+  // answer is optionIndex (0-3) for MC/TF, or numeric value (within slider range) for slider
   const answersRef = useRef<Map<number, Map<string, number>>>(new Map());
+  // answer timestamps per question: Map<questionIndex, Map<playerName, timestamp>>
+  const answerTimestampsRef = useRef<Map<number, Map<string, number>>>(new Map());
   // Track retry attempts for unavailable-id errors
   const retryCountRef = useRef(0);
   // Track whether a delayed retry is pending (to avoid double-triggers)
@@ -103,13 +107,23 @@ export function useHost(
   // ---------- answer tracking ----------
 
   const addAnswer = useCallback(
-    (playerName: string, questionIndex: number, optionIndex: number) => {
+    (playerName: string, questionIndex: number, answer: number, answeredAt?: number) => {
       if (!answersRef.current.has(questionIndex)) {
         answersRef.current.set(questionIndex, new Map());
       }
       const questionAnswers = answersRef.current.get(questionIndex);
       if (questionAnswers) {
-        questionAnswers.set(canonicalName(playerName), optionIndex);
+        questionAnswers.set(canonicalName(playerName), answer);
+      }
+      // Store timestamp if provided
+      if (answeredAt !== undefined) {
+        if (!answerTimestampsRef.current.has(questionIndex)) {
+          answerTimestampsRef.current.set(questionIndex, new Map());
+        }
+        const timestamps = answerTimestampsRef.current.get(questionIndex);
+        if (timestamps) {
+          timestamps.set(canonicalName(playerName), answeredAt);
+        }
       }
     },
     [],
@@ -117,6 +131,10 @@ export function useHost(
 
   const getAnswers = useCallback((questionIndex: number): Map<string, number> => {
     return answersRef.current.get(questionIndex) ?? new Map();
+  }, []);
+
+  const getAnswerTimestamps = useCallback((questionIndex: number): Map<string, number> => {
+    return answerTimestampsRef.current.get(questionIndex) ?? new Map();
   }, []);
 
   /** Add delta to a player's score and sync state. */
@@ -136,6 +154,7 @@ export function useHost(
       player.answeredQuestions.clear();
     }
     answersRef.current.clear();
+    answerTimestampsRef.current.clear();
     syncPlayersState();
   }, [syncPlayersState]);
 
@@ -340,7 +359,7 @@ export function useHost(
               if (!player) return;
 
               // Record the answer
-              addAnswer(playerKey, msg.questionIndex, msg.optionIndex);
+              addAnswer(playerKey, msg.questionIndex, msg.answer, msg.answeredAt);
               player.answeredQuestions.add(msg.questionIndex);
               syncPlayersState();
 
@@ -410,7 +429,6 @@ export function useHost(
     const connections = connectionsRef.current;
 
     p.on('open', () => {
-      console.log(`[useHost] Peer open with ID: ${p.id}`);
       retryCountRef.current = 0;
       setError(null);
     });
@@ -432,9 +450,6 @@ export function useHost(
           p.destroy();
           retryTimerRef.current = setTimeout(() => {
             const newCode = generateGameCode();
-            console.log(
-              `[useHost] Retrying with new code ${newCode} (attempt ${attempt}/3)`,
-            );
             setGameCode(newCode);
           }, delayMs);
         } else {
@@ -470,6 +485,7 @@ export function useHost(
     sendToPlayer,
     addAnswer,
     getAnswers,
+    getAnswerTimestamps,
     updatePlayerScore,
     resetScores,
     retryWithNewCode,

@@ -180,6 +180,14 @@
   flex: 1;
 }
 
+.true-false-label {
+  display: inline-block;
+  flex: 1;
+  padding: 0.625rem 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+
 .hint {
   font-size: 0.825rem;
   color: var(--color-text-muted);
@@ -190,6 +198,39 @@
 .add-question-btn {
   width: 100%;
   margin-bottom: 1.5rem;
+}
+
+/* Slider configuration group (min/max/correct) */
+.slider-config-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.slider-config-group .form-group:last-child {
+  grid-column: 1 / -1;
+}
+
+/* Time limit input */
+.time-limit-group {
+  margin-top: 0.25rem;
+}
+
+.time-limit-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-limit-input {
+  width: 5rem;
+  text-align: center;
+  flex: none;
+}
+
+.time-limit-unit {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
 }
 
 /* Action buttons */
