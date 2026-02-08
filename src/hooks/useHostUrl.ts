@@ -46,7 +46,6 @@ export function useHostUrl() {
     let cancelled = false;
 
     detectLocalIp().then((ip) => {
-      console.log('[useHostUrl] detectLocalIp resolved with:', ip);
       if (!cancelled) {
         if (ip) {
           // Persist the detected IP so we can inspect it
@@ -54,11 +53,8 @@ export function useHostUrl() {
             localStorage.setItem(DETECTED_IP_KEY, ip);
           } catch { /* noop */ }
 
-          const joinUrl = buildJoinBaseUrl(ip);
-          console.log('[useHostUrl] Setting detectedIp:', ip, '→ joinBaseUrl will be:', joinUrl);
           setDetectedIp(ip);
         } else {
-          console.log('[useHostUrl] No IP detected, using current origin');
           try {
             localStorage.setItem(DETECTED_IP_KEY, 'null');
           } catch { /* noop */ }

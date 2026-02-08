@@ -71,7 +71,6 @@ export function detectLocalIp(): Promise<string | null> {
     const done = (ip: string | null, reason: string) => {
       if (resolved) {
         appendLog('done_ignored_already_resolved', { ip, reason });
-        console.log('[detectLocalIp] Already resolved, ignoring done() call with:', ip, 'reason:', reason);
         return;
       }
       resolved = true;
@@ -85,7 +84,6 @@ export function detectLocalIp(): Promise<string | null> {
         allCandidates,
       });
 
-      console.log('[detectLocalIp] ✅ RESOLVED with IP:', ip, '| Reason:', reason);
       pc.close();
       resolve(ip);
     };
@@ -97,10 +95,8 @@ export function detectLocalIp(): Promise<string | null> {
     });
 
     // Timeout after 5 seconds — give STUN a bit more time than the old 3s.
-    console.log('[detectLocalIp] Starting ICE candidate gathering (5s timeout)...');
     appendLog('timeout_armed', { timeoutMs: 5000 });
     const timeout = setTimeout(() => {
-      console.log('[detectLocalIp] ⏰ TIMEOUT after 5s. publicFallback:', publicFallback);
       appendLog('timeout_fired', { publicFallback, totalCandidates: allCandidates.length });
       done(publicFallback, 'timeout');
     }, 5000);
@@ -116,7 +112,6 @@ export function detectLocalIp(): Promise<string | null> {
         appendLog('local_description_set');
       })
       .catch((err) => {
-        console.log('[detectLocalIp] ❌ createOffer/setLocalDescription failed');
         appendLog('offer_error', { error: String(err) });
         done(null, 'offer-error');
       });
@@ -126,14 +121,12 @@ export function detectLocalIp(): Promise<string | null> {
         // Still log candidates that arrive after resolution
         if (event?.candidate) {
           appendLog('late_candidate_post_resolve', { candidate: event.candidate.candidate });
-          console.log('[detectLocalIp] (post-resolve) Late candidate:', event.candidate.candidate);
         }
         return;
       }
 
       if (!event || !event.candidate) {
         // ICE gathering finished — use the best IP we found (or null).
-        console.log('[detectLocalIp] ICE gathering complete (null candidate). publicFallback:', publicFallback);
         appendLog('ice_gathering_complete', { publicFallback });
         done(publicFallback, 'ice-gathering-complete');
         return;
@@ -142,12 +135,6 @@ export function detectLocalIp(): Promise<string | null> {
       const candidateStr = event.candidate.candidate;
       const candidateType = event.candidate.type; // host, srflx, prflx, relay
       allCandidates.push(candidateStr);
-
-      console.log('[detectLocalIp] ────────────────────────────────');
-      console.log('[detectLocalIp] Candidate:', candidateStr);
-      console.log('[detectLocalIp] Candidate type:', candidateType);
-      console.log('[detectLocalIp] Protocol:', event.candidate.protocol);
-      console.log('[detectLocalIp] Address:', event.candidate.address);
 
       // ICE candidate lines look like:
       //   candidate:842163049 1 udp 1677729535 192.168.1.42 56234 typ srflx ...
@@ -170,26 +157,19 @@ export function detectLocalIp(): Promise<string | null> {
           isLoopback: ip.startsWith('127.') || ip === '0.0.0.0',
         });
 
-        console.log('[detectLocalIp] Extracted IP:', ip);
-        console.log('[detectLocalIp] Is private?:', isPrivate);
-
         // Skip loopback and link-local "any" address
         if (ip.startsWith('127.') || ip === '0.0.0.0') {
-          console.log('[detectLocalIp] Skipping (loopback/any):', ip);
           return;
         }
 
         if (isPrivate) {
           // Found a local network IP — resolve immediately.
-          console.log('[detectLocalIp] 🏠 Found PRIVATE IP, resolving immediately:', ip);
           done(ip, 'private-ip-found');
         } else if (!publicFallback) {
           // Store the first public IP as a fallback, but keep listening
           // for a private one.
-          console.log('[detectLocalIp] 🌐 Storing PUBLIC IP as fallback:', ip);
           publicFallback = ip;
         } else {
-          console.log('[detectLocalIp] Ignoring duplicate public IP:', ip, '(already have fallback:', publicFallback, ')');
           appendLog('duplicate_public_ip_ignored', { ip, existingFallback: publicFallback });
         }
       } else {
@@ -198,7 +178,6 @@ export function detectLocalIp(): Promise<string | null> {
           candidateType,
           address: event.candidate.address,
         });
-        console.log('[detectLocalIp] No IPv4 found in candidate (mDNS or IPv6?)');
       }
     };
   });
