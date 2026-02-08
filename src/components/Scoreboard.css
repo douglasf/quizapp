@@ -139,3 +139,73 @@
     background-color: #fdba74;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Landscape / Widescreen — expand scoreboard for TV (16:9) displays
+   -------------------------------------------------------------------------- */
+
+@media (orientation: landscape) and (min-width: 640px) {
+  .scoreboard {
+    max-width: min(90vw, 56rem);
+  }
+
+  .scoreboard-title {
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  /* Wider podium with more breathing room */
+  .podium {
+    gap: 1.5rem;
+    padding: 0 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .podium-place {
+    max-width: 12rem;
+  }
+
+  .podium-badge {
+    font-size: 2.5rem;
+  }
+
+  .podium-place:nth-child(1) .podium-badge { font-size: 2.25rem; }
+  .podium-place:nth-child(2) .podium-badge { font-size: 3rem; }
+  .podium-place:nth-child(3) .podium-badge { font-size: 2.25rem; }
+
+  .podium-name {
+    font-size: 1.1rem;
+  }
+
+  .podium-score {
+    font-size: 0.95rem;
+  }
+
+  /* Taller podium bars for visual impact on large screens */
+  .podium-place:nth-child(1) .podium-bar {
+    height: 5.5rem;
+  }
+
+  .podium-place:nth-child(2) .podium-bar {
+    height: 8rem;
+  }
+
+  .podium-place:nth-child(3) .podium-bar {
+    height: 4rem;
+  }
+
+  /* Multi-column standings list for many players */
+  .standings-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 0 1.5rem;
+  }
+
+  .standings-item {
+    padding: 0.625rem 1rem;
+  }
+
+  .standings-rank {
+    font-size: 1rem;
+  }
+}
