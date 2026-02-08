@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Quiz, Question, QuestionType } from '../types/quiz'
 import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz'
 import { validateQuiz } from '../utils/quizValidator'
+import { compressImageFile, COMPRESS_THRESHOLD, compressAnswerImage, readFileAsDataUrl } from '../utils/imageCompression'
 import './QuizCreator.css'
 
 let questionIdCounter = 0;
@@ -46,6 +47,13 @@ function stripIds(questions: (Question & { _id?: number })[]): Question[] {
       ...(q.image ? { image: q.image } : {}),
     };
 
+    // Include imageOptions if all slots are filled (non-empty strings)
+    const imageOpts = q.imageOptions;
+    const hasImageOptions =
+      Array.isArray(imageOpts) &&
+      imageOpts.length === q.options.length &&
+      imageOpts.every(img => typeof img === 'string' && img.length > 0);
+
     if (qType === 'slider') {
       // Slider questions don't use options/correctIndex — provide sensible defaults
       return {
@@ -64,6 +72,7 @@ function stripIds(questions: (Question & { _id?: number })[]): Question[] {
         options: q.options,
         correctIndex: 0,
         correctIndices: q.correctIndices ?? [],
+        ...(hasImageOptions ? { imageOptions: imageOpts } : {}),
       };
     }
 
@@ -72,57 +81,12 @@ function stripIds(questions: (Question & { _id?: number })[]): Question[] {
       options: q.options,
       correctIndex: q.correctIndex,
       ...(q.correctValue !== undefined ? { correctValue: q.correctValue } : {}),
+      ...(hasImageOptions ? { imageOptions: imageOpts } : {}),
     };
   });
 }
 
 type QuestionWithId = Question & { _id: number };
-
-const COMPRESS_THRESHOLD = 100 * 1024; // 100 KB — only compress files larger than this
-
-function compressImage(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const rawDataUrl = e.target?.result as string;
-
-      // If file is small enough, skip compression
-      if (file.size <= COMPRESS_THRESHOLD) {
-        resolve(rawDataUrl);
-        return;
-      }
-
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        const maxDim = 800;
-        if (width > maxDim || height > maxDim) {
-          const ratio = Math.min(maxDim / width, maxDim / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(rawDataUrl);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        // Try WebP first, fall back to JPEG
-        const webpUrl = canvas.toDataURL('image/webp', 0.65);
-        const jpegUrl = canvas.toDataURL('image/jpeg', 0.70);
-        // Use whichever is smaller, or WebP if roughly equal
-        resolve(webpUrl.length <= jpegUrl.length ? webpUrl : jpegUrl);
-      };
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.src = rawDataUrl;
-    };
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
-}
 
 function QuizCreator() {
   const navigate = useNavigate()
@@ -148,6 +112,8 @@ function QuizCreator() {
 
   // Image upload state: tracks which question is currently compressing
   const [compressingImage, setCompressingImage] = useState<number | null>(null)
+  // Tracks which answer option is currently compressing: "questionIndex-optionIndex"
+  const [compressingAnswerImage, setCompressingAnswerImage] = useState<string | null>(null)
 
   function updateQuestion(index: number, updated: QuestionWithId) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? updated : q)))
@@ -185,29 +151,46 @@ function QuizCreator() {
         ...updated,
         correctIndex: Math.min(q.correctIndex, 1),
         options: ['False', 'True', '', ''],
+        imageOptions: undefined, // Image answers not supported for T/F
       }
     } else if (type === 'slider') {
       // Ensure correctValue and slider range have defaults
       const sMin = q.sliderMin ?? 0
       const sMax = q.sliderMax ?? 100
       const mid = Math.round((sMin + sMax) / 2)
-      updated = { ...updated, correctValue: q.correctValue ?? mid, sliderMin: sMin, sliderMax: sMax }
-    } else if (type === 'multi_choice') {
-      // Initialize with 2 empty options and empty correctIndices
       updated = {
         ...updated,
-        options: ['', ''],
+        correctValue: q.correctValue ?? mid,
+        sliderMin: sMin,
+        sliderMax: sMax,
+        imageOptions: undefined, // Image answers not supported for slider
+      }
+    } else if (type === 'multi_choice') {
+      // Initialize with 2 empty options and empty correctIndices
+      const hasImages = !!q.imageOptions
+      const newOptions = hasImages ? ['1', '2'] : ['', '']
+      updated = {
+        ...updated,
+        options: newOptions,
         correctIndices: [],
         correctIndex: 0,
+        // Reset imageOptions to match new option count if enabled
+        ...(hasImages ? { imageOptions: newOptions.map(() => '') } : {}),
       }
     } else if (type === 'multiple_choice') {
       // Switching back to MC: ensure 4 options
-      const opts = [...q.options]
-      while (opts.length < 4) opts.push('')
+      const hasImages = !!q.imageOptions
+      const newOptions = hasImages ? ['A', 'B', 'C', 'D'] : (() => {
+        const opts = [...q.options]
+        while (opts.length < 4) opts.push('')
+        return opts.slice(0, 4)
+      })()
       updated = {
         ...updated,
-        options: opts.slice(0, 4),
+        options: newOptions,
         correctIndex: q.correctIndex < 4 ? q.correctIndex : 0,
+        // Reset imageOptions to match new option count if enabled
+        ...(hasImages ? { imageOptions: newOptions.map(() => '') } : {}),
       }
     }
     updateQuestion(index, updated)
@@ -230,20 +213,29 @@ function QuizCreator() {
   function addOption(questionIndex: number) {
     const q = questions[questionIndex]
     if (q.options.length >= 8) return // max 8 options
-    const newOptions = [...q.options, '']
-    updateQuestion(questionIndex, { ...q, options: newOptions })
+    const newOptionLabel = hasImageAnswers(q)
+      ? (q.type === 'multi_choice' ? String(q.options.length + 1) : String.fromCharCode(65 + q.options.length))
+      : ''
+    const newOptions = [...q.options, newOptionLabel]
+    const newImageOptions = q.imageOptions ? [...q.imageOptions, ''] : undefined
+    updateQuestion(questionIndex, { ...q, options: newOptions, ...(newImageOptions ? { imageOptions: newImageOptions } : {}) })
   }
 
   function removeOption(questionIndex: number, optionIndex: number) {
     const q = questions[questionIndex]
     if (q.options.length <= 2) return // min 2 options
     const newOptions = q.options.filter((_, idx) => idx !== optionIndex)
+    const newImageOptions = q.imageOptions ? q.imageOptions.filter((_, idx) => idx !== optionIndex) : undefined
     // Clean up correctIndices: remove deleted index, shift indices above it
     let correctIndices = q.correctIndices ?? []
     correctIndices = correctIndices
       .filter(idx => idx !== optionIndex)
       .map(idx => idx > optionIndex ? idx - 1 : idx)
-    updateQuestion(questionIndex, { ...q, options: newOptions, correctIndices })
+    // Re-generate sequential labels when in image mode
+    const finalOptions = hasImageAnswers(q)
+      ? generateImageLabels(newOptions.length, q.type)
+      : newOptions
+    updateQuestion(questionIndex, { ...q, options: finalOptions, correctIndices, ...(newImageOptions ? { imageOptions: newImageOptions } : {}) })
   }
 
   function addQuestion() {
@@ -271,7 +263,7 @@ function QuizCreator() {
     const isLarge = file.size > COMPRESS_THRESHOLD
     if (isLarge) setCompressingImage(index)
     try {
-      const dataUrl = await compressImage(file)
+      const dataUrl = await compressImageFile(file)
       const q = questions[index]
       updateQuestion(index, { ...q, image: dataUrl })
     } catch {
@@ -284,6 +276,57 @@ function QuizCreator() {
   function removeImage(index: number) {
     const q = questions[index]
     updateQuestion(index, { ...q, image: undefined })
+  }
+
+  // Per-question "use image answers" state: derived from imageOptions presence
+  function hasImageAnswers(q: QuestionWithId): boolean {
+    return Array.isArray(q.imageOptions)
+  }
+
+  function generateImageLabels(count: number, type: QuestionType | undefined): string[] {
+    if (type === 'multi_choice') {
+      return Array.from({ length: count }, (_, i) => String(i + 1))
+    }
+    // multiple_choice: use A, B, C, D
+    return Array.from({ length: count }, (_, i) => String.fromCharCode(65 + i))
+  }
+
+  function toggleImageAnswers(qIndex: number) {
+    const q = questions[qIndex]
+    if (hasImageAnswers(q)) {
+      // Disable: remove imageOptions and clear auto-generated labels
+      const options = q.options.map(() => '')
+      updateQuestion(qIndex, { ...q, options, imageOptions: undefined })
+    } else {
+      // Enable: initialize empty imageOptions and auto-populate labels
+      const imageOptions = q.options.map(() => '')
+      const options = generateImageLabels(q.options.length, q.type)
+      updateQuestion(qIndex, { ...q, options, imageOptions })
+    }
+  }
+
+  async function handleAnswerImageUpload(qIndex: number, optIndex: number, file: File) {
+    const key = `${qIndex}-${optIndex}`
+    setCompressingAnswerImage(key)
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      const compressed = await compressAnswerImage(dataUrl)
+      const q = questions[qIndex]
+      const imageOptions = [...(q.imageOptions ?? [])]
+      imageOptions[optIndex] = compressed
+      updateQuestion(qIndex, { ...q, imageOptions })
+    } catch {
+      // Silently fail — keeping UX simple
+    } finally {
+      setCompressingAnswerImage(null)
+    }
+  }
+
+  function removeAnswerImage(qIndex: number, optIndex: number) {
+    const q = questions[qIndex]
+    const imageOptions = [...(q.imageOptions ?? [])]
+    imageOptions[optIndex] = ''
+    updateQuestion(qIndex, { ...q, imageOptions })
   }
 
   function handleSave() {
@@ -468,6 +511,28 @@ function QuizCreator() {
                 </select>
               </div>
 
+              {/* Image answers toggle — only for MC and multi-choice */}
+              {(q.type ?? 'multiple_choice') !== 'slider' && (q.type ?? 'multiple_choice') !== 'true_false' && (
+                <div className="form-group image-answers-toggle-group">
+                  <div className="toggle-row">
+                    <span className="form-label toggle-label">Use Images for Answers</span>
+                    <button
+                      type="button"
+                      className={`toggle-switch ${hasImageAnswers(q) ? 'toggle-on' : ''}`}
+                      role="switch"
+                      aria-checked={hasImageAnswers(q)}
+                      aria-label="Use images for answers"
+                      onClick={() => toggleImageAnswers(qIndex)}
+                    >
+                      <span className="toggle-knob" />
+                    </button>
+                  </div>
+                  {hasImageAnswers(q) && (
+                    <p className="hint">Upload an image for each answer option below.</p>
+                  )}
+                </div>
+              )}
+
               {/* Answer options — conditional on question type */}
               {(q.type ?? 'multiple_choice') === 'slider' ? (
                 /* Slider: min, max, and correct answer inputs */
@@ -625,34 +690,77 @@ function QuizCreator() {
                 <fieldset className="options-group">
                   <legend className="form-label">Answer Options (select all correct answers with checkboxes)</legend>
                   {q.options.map((opt, oIndex) => (
-                    <div key={`${q._id}-opt-${oIndex}`} className="option-row-dynamic">
-                      <input
-                        type="checkbox"
-                        id={`q-${q._id}-correct-${oIndex}`}
-                        className="option-checkbox"
-                        checked={q.correctIndices?.includes(oIndex) ?? false}
-                        onChange={() => toggleCorrectIndex(qIndex, oIndex)}
-                        aria-label={`Mark option ${oIndex + 1} as correct`}
-                      />
-                      <input
-                        type="text"
-                        id={`q-${q._id}-opt-${oIndex}`}
-                        className="form-input option-input"
-                        placeholder={`Option ${oIndex + 1}`}
-                        value={opt}
-                        onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                        aria-label={`Option ${oIndex + 1} text`}
-                      />
-                      {q.options.length > 2 && (
-                        <button
-                          type="button"
-                          className="btn-icon btn-icon-danger"
-                          title="Remove option"
-                          onClick={() => removeOption(qIndex, oIndex)}
-                          aria-label={`Remove option ${oIndex + 1}`}
-                        >
-                          ✕
-                        </button>
+                    <div key={`${q._id}-opt-${oIndex}`} className={`option-row-dynamic ${hasImageAnswers(q) ? 'option-row-with-image' : ''}`}>
+                      <div className="option-row-controls">
+                        <input
+                          type="checkbox"
+                          id={`q-${q._id}-correct-${oIndex}`}
+                          className="option-checkbox"
+                          checked={q.correctIndices?.includes(oIndex) ?? false}
+                          onChange={() => toggleCorrectIndex(qIndex, oIndex)}
+                          aria-label={`Mark option ${oIndex + 1} as correct`}
+                        />
+                        {hasImageAnswers(q) ? (
+                          <span className="option-label">{opt}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            id={`q-${q._id}-opt-${oIndex}`}
+                            className="form-input option-input"
+                            placeholder={`Option ${oIndex + 1}`}
+                            value={opt}
+                            onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                            aria-label={`Option ${oIndex + 1} text`}
+                          />
+                        )}
+                        {q.options.length > 2 && (
+                          <button
+                            type="button"
+                            className="btn-icon btn-icon-danger"
+                            title="Remove option"
+                            onClick={() => removeOption(qIndex, oIndex)}
+                            aria-label={`Remove option ${oIndex + 1}`}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      {hasImageAnswers(q) && (
+                        <div className="answer-image-upload">
+                          {q.imageOptions?.[oIndex] ? (
+                            <div className="answer-image-preview-row">
+                              <img
+                                src={q.imageOptions[oIndex]}
+                                alt={`Option ${oIndex + 1} preview`}
+                                className="answer-image-thumbnail"
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-remove-image btn-sm"
+                                onClick={() => removeAnswerImage(qIndex, oIndex)}
+                              >
+                                Replace
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="answer-image-dropzone">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="file-input"
+                                id={`q-${q._id}-ansimg-${oIndex}`}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) handleAnswerImageUpload(qIndex, oIndex, file)
+                                  e.target.value = ''
+                                }}
+                              />
+                              {compressingAnswerImage === `${qIndex}-${oIndex}` && (
+                                <p className="hint">Compressing...</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -673,37 +781,79 @@ function QuizCreator() {
                   <legend className="form-label">Answer Options</legend>
                   {q.options.slice(0, (q.type ?? 'multiple_choice') === 'true_false' ? 2 : 4).map((opt, oIndex) => {
                     const isTrueFalse = (q.type ?? 'multiple_choice') === 'true_false';
+                    const showImageUpload = !isTrueFalse && hasImageAnswers(q);
 
                     return (
-                      <div key={`${q._id}-opt-${optionLabels[oIndex]}`} className="option-row">
-                        <input
-                          type="radio"
-                          id={`q-${q._id}-correct-${optionLabels[oIndex]}`}
-                          name={`q-${q._id}-correct`}
-                          className="option-radio"
-                          checked={q.correctIndex === oIndex}
-                          onChange={() => updateCorrectIndex(qIndex, oIndex)}
-                          aria-label={`Mark option ${optionLabels[oIndex]} as correct`}
-                        />
-                        <label
-                          htmlFor={`q-${q._id}-correct-${optionLabels[oIndex]}`}
-                          className="option-label"
-                        >
-                          {optionLabels[oIndex]}
-                        </label>
-
-                        {isTrueFalse ? (
-                          <span className="true-false-label">{opt}</span>
-                        ) : (
+                      <div key={`${q._id}-opt-${optionLabels[oIndex]}`} className={`option-row ${showImageUpload ? 'option-row-with-image' : ''}`}>
+                        <div className="option-row-controls">
                           <input
-                            type="text"
-                            id={`q-${q._id}-opt-${optionLabels[oIndex]}`}
-                            className="form-input option-input"
-                            placeholder={`Option ${optionLabels[oIndex]}`}
-                            value={opt}
-                            onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                            aria-label={`Option ${optionLabels[oIndex]} text`}
+                            type="radio"
+                            id={`q-${q._id}-correct-${optionLabels[oIndex]}`}
+                            name={`q-${q._id}-correct`}
+                            className="option-radio"
+                            checked={q.correctIndex === oIndex}
+                            onChange={() => updateCorrectIndex(qIndex, oIndex)}
+                            aria-label={`Mark option ${optionLabels[oIndex]} as correct`}
                           />
+                          <label
+                            htmlFor={`q-${q._id}-correct-${optionLabels[oIndex]}`}
+                            className="option-label"
+                          >
+                            {optionLabels[oIndex]}
+                          </label>
+
+                          {isTrueFalse ? (
+                            <span className="true-false-label">{opt}</span>
+                          ) : showImageUpload ? (
+                            <span className="option-label">{opt}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              id={`q-${q._id}-opt-${optionLabels[oIndex]}`}
+                              className="form-input option-input"
+                              placeholder={`Option ${optionLabels[oIndex]}`}
+                              value={opt}
+                              onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                              aria-label={`Option ${optionLabels[oIndex]} text`}
+                            />
+                          )}
+                        </div>
+                        {showImageUpload && (
+                          <div className="answer-image-upload">
+                            {q.imageOptions?.[oIndex] ? (
+                              <div className="answer-image-preview-row">
+                                <img
+                                  src={q.imageOptions[oIndex]}
+                                  alt={`Answer ${optionLabels[oIndex]} preview`}
+                                  className="answer-image-thumbnail"
+                                />
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-remove-image btn-sm"
+                                  onClick={() => removeAnswerImage(qIndex, oIndex)}
+                                >
+                                  Replace
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="answer-image-dropzone">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="file-input"
+                                  id={`q-${q._id}-ansimg-${optionLabels[oIndex]}`}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) handleAnswerImageUpload(qIndex, oIndex, file)
+                                    e.target.value = ''
+                                  }}
+                                />
+                                {compressingAnswerImage === `${qIndex}-${oIndex}` && (
+                                  <p className="hint">Compressing...</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
