@@ -18,6 +18,7 @@ interface RawQuestion {
   timeLimitSeconds?: unknown;
   type?: unknown;
   image?: unknown;
+  imageOptions?: unknown;
 }
 
 const VALID_IMAGE_DATA_URL_PATTERN = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/;
@@ -175,6 +176,32 @@ export function validateQuiz(data: unknown): ValidationResult {
           }
         }
       }
+
+      // Image options validation (optional parallel array to options)
+      if (q.imageOptions !== undefined && q.imageOptions !== null) {
+        if (!Array.isArray(q.imageOptions)) {
+          errors.push(`Question ${i + 1}: "imageOptions" must be an array of base64 data URL strings`);
+        } else {
+          const optLen = Array.isArray(q.options) ? q.options.length : 0;
+          if (q.imageOptions.length !== optLen) {
+            errors.push(`Question ${i + 1}: "imageOptions" length (${q.imageOptions.length}) must match "options" length (${optLen})`);
+          }
+          (q.imageOptions as unknown[]).forEach((img: unknown, j: number) => {
+            if (typeof img !== 'string') {
+              errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a string (base64 data URL)`);
+            } else if (!VALID_IMAGE_DATA_URL_PATTERN.test(img)) {
+              errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a valid data URL (data:image/png|jpeg|webp|gif|svg+xml;base64,...)`);
+            } else {
+              const base64Part = img.split(',')[1] ?? '';
+              const estimatedBytes = Math.ceil(base64Part.length * 3 / 4);
+              if (estimatedBytes > MAX_IMAGE_BYTES) {
+                const sizeKB = Math.round(estimatedBytes / 1024);
+                errors.push(`Question ${i + 1}, imageOptions[${j}]: image is too large (${sizeKB} KB). Maximum allowed is ${MAX_IMAGE_BYTES / 1024} KB.`);
+              }
+            }
+          });
+        }
+      }
     });
 
     // Check total image size across all questions (warning, not error)
@@ -183,6 +210,14 @@ export function validateQuiz(data: unknown): ValidationResult {
       if (typeof q.image === 'string' && q.image.startsWith('data:image/')) {
         const base64Part = q.image.split(',')[1] ?? '';
         totalImageBytes += Math.ceil(base64Part.length * 3 / 4);
+      }
+      if (Array.isArray(q.imageOptions)) {
+        for (const img of q.imageOptions) {
+          if (typeof img === 'string' && (img as string).startsWith('data:image/')) {
+            const base64Part = (img as string).split(',')[1] ?? '';
+            totalImageBytes += Math.ceil(base64Part.length * 3 / 4);
+          }
+        }
       }
     }
     if (totalImageBytes > MAX_TOTAL_IMAGE_BYTES) {

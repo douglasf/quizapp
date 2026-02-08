@@ -19,6 +19,13 @@ export interface Question {
   timeLimitSeconds?: number; // 5-120 seconds; defaults to 30 if omitted
   type?: QuestionType; // defaults to 'multiple_choice' when omitted
   image?: string; // optional base64 data URL for question image
+  /**
+   * Optional base64-encoded data-URL images for each answer option.
+   * Parallel array to `options` — `imageOptions[i]` is the image for `options[i]`.
+   * Must have the same length as `options` when present.
+   * Falls back to text-only rendering when undefined.
+   */
+  imageOptions?: string[];
 }
 
 /** Default time limit when a question doesn't specify one */

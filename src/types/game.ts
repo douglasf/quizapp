@@ -48,6 +48,7 @@ export interface PlayerQuestion {
   questionType: QuestionType;
   sliderMin?: number; // minimum slider value (defaults to 0)
   sliderMax?: number; // maximum slider value (defaults to 100)
+
 }
 
 export interface PlayerStanding {
