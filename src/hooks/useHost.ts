@@ -1,10 +1,10 @@
-// Host-side networking hook — manages PeerJS peer, player connections, and message handling
+// Host-side networking hook — manages player connections and message handling
+// Peer lifecycle is managed by PeerManager singleton (see ../utils/peerManager.ts)
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import type Peer from 'peerjs';
+import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from 'react';
 import type { DataConnection } from 'peerjs';
-import { createHostPeer } from '../utils/peer';
-import { generateGameCode } from '../utils/gameCode';
+import type Peer from 'peerjs';
+import * as peerManager from '../utils/peerManager';
 import type { Player, GamePhase } from '../types/game';
 import type { PlayerMessage, HostMessage } from '../types/messages';
 
@@ -25,34 +25,36 @@ export interface UseHostReturn {
   getAnswerTimestamps: (questionIndex: number) => Map<string, number>;
   updatePlayerScore: (playerName: string, delta: number) => void;
   resetScores: () => void;
-  retryWithNewCode: () => void;
   peer: Peer | null;
   error: string | null;
 }
 
 /**
- * Custom hook that manages all host-side PeerJS networking.
+ * Custom hook that manages all host-side networking.
  *
  * Flow:
- *  1. Creates a PeerJS peer with ID `quiz-<gameCode>`.
- *  2. Listens for incoming data connections from players.
+ *  1. PeerManager creates a PeerJS peer with ID `quiz-<gameCode>` (singleton).
+ *  2. Listens for incoming data connections from players via peerManager.onConnection().
  *  3. Handles join/rejoin/answer/ping messages from players.
  *  4. Provides broadcast() and sendToPlayer() for the host game logic.
  */
 export function useHost(
-  initialGameCode: string,
   currentQuestionIndexRef?: React.RefObject<number>,
   phaseRef?: React.RefObject<GamePhase>,
   onPlayerRejoinRef?: React.RefObject<((playerName: string) => void) | null>,
   onPlayerGetStateRef?: React.RefObject<((playerName: string) => void) | null>,
 ): UseHostReturn {
-  const [gameCode, setGameCode] = useState(initialGameCode);
+  // Use PeerManager singleton for peer lifecycle
+  const snapshot = useSyncExternalStore(
+    peerManager.subscribe,
+    peerManager.getSnapshot,
+  );
+  const gameCode = snapshot.gameCode;
+  const error = snapshot.error;
+
   const [players, setPlayers] = useState<Map<string, Player>>(() => new Map());
-  const [error, setError] = useState<string | null>(null);
-  const [peer, setPeer] = useState<Peer | null>(null);
 
   // Refs persist across renders without triggering re-renders
-  const peerRef = useRef<Peer | null>(null);
   const connectionsRef = useRef<Map<string, DataConnection>>(new Map()); // keyed by peerId
   const playersRef = useRef<Map<string, Player>>(new Map()); // keyed by player name (lowercase)
   // answers per question: Map<questionIndex, Map<playerName, answer>>
@@ -60,10 +62,6 @@ export function useHost(
   const answersRef = useRef<Map<number, Map<string, number | number[]>>>(new Map());
   // answer timestamps per question: Map<questionIndex, Map<playerName, timestamp>>
   const answerTimestampsRef = useRef<Map<number, Map<string, number>>>(new Map());
-  // Track retry attempts for unavailable-id errors
-  const retryCountRef = useRef(0);
-  // Track whether a delayed retry is pending (to avoid double-triggers)
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ---------- helpers ----------
 
@@ -398,85 +396,12 @@ export function useHost(
     [gameCode, broadcast, buildPlayerListMessage, syncPlayersState, addAnswer, currentQuestionIndexRef, phaseRef, onPlayerRejoinRef, onPlayerGetStateRef],
   );
 
-  // ---------- manual retry ----------
-
-  /** Manually generate a new game code and retry the peer connection.
-   *  Useful when auto-retries are exhausted (especially during local dev). */
-  const retryWithNewCode = useCallback(() => {
-    // Clean up any existing peer
-    if (peerRef.current && !peerRef.current.destroyed) {
-      peerRef.current.destroy();
-    }
-    // Clear any pending auto-retry timer
-    if (retryTimerRef.current) {
-      clearTimeout(retryTimerRef.current);
-      retryTimerRef.current = null;
-    }
-    // Reset retry counter and generate fresh code
-    retryCountRef.current = 0;
-    setError(null);
-    setGameCode(generateGameCode());
-  }, []);
-
-  // ---------- peer lifecycle ----------
+  // ---------- connection registration via PeerManager ----------
 
   useEffect(() => {
-    const p = createHostPeer(gameCode);
-    peerRef.current = p;
-    setPeer(p);
-
-    // Capture ref value for cleanup
-    const connections = connectionsRef.current;
-
-    p.on('open', () => {
-      retryCountRef.current = 0;
-      setError(null);
-    });
-
-    p.on('connection', (conn) => {
-      handleConnection(conn);
-    });
-
-    p.on('error', (err) => {
-      console.error('[useHost] Peer error:', err);
-      if (err.type === 'unavailable-id') {
-        if (retryCountRef.current < 3) {
-          retryCountRef.current++;
-          const attempt = retryCountRef.current;
-          // In dev mode, PeerJS Cloud may still hold the old peer ID for a few seconds.
-          // Add a delay before retrying so the old registration has time to expire.
-          const delayMs = import.meta.env.DEV ? 1500 : 500;
-          setError(`Game code taken, retrying in ${delayMs / 1000}s... (attempt ${attempt}/3)`);
-          p.destroy();
-          retryTimerRef.current = setTimeout(() => {
-            const newCode = generateGameCode();
-            setGameCode(newCode);
-          }, delayMs);
-        } else {
-          setError('Unable to create game after 3 attempts. Please refresh and try again.');
-        }
-      } else {
-        setError(`Connection error: ${err.message}`);
-      }
-    });
-
-    p.on('disconnected', () => {
-      console.warn('[useHost] Peer disconnected from signalling server, attempting reconnect…');
-      if (!p.destroyed) {
-        p.reconnect();
-      }
-    });
-
-    return () => {
-      if (retryTimerRef.current) {
-        clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = null;
-      }
-      p.destroy();
-      peerRef.current = null;
-      connections.clear();
-    };
-  }, [gameCode, handleConnection]);
+    const unsubscribe = peerManager.onConnection(handleConnection);
+    return unsubscribe;
+  }, [handleConnection]);
 
   return {
     gameCode,
@@ -488,8 +413,7 @@ export function useHost(
     getAnswerTimestamps,
     updatePlayerScore,
     resetScores,
-    retryWithNewCode,
-    peer,
+    peer: peerManager.getPeer(),
     error,
   };
 }

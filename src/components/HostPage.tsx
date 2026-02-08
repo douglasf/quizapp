@@ -6,7 +6,7 @@ import { useGameState } from '../hooks/useGameState';
 import { useHostUrl } from '../hooks/useHostUrl';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useFitText } from '../hooks/useFitText';
-import { generateGameCode } from '../utils/gameCode';
+import * as peerManager from '../utils/peerManager';
 import { calculateScore, isAnswerCorrect } from '../utils/scoring';
 import Scoreboard from './Scoreboard';
 import type { Quiz, QuestionType } from '../types/quiz';
@@ -287,7 +287,11 @@ function QuestionPhase({
 function HostPage() {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  const [initialGameCode] = useState(() => generateGameCode());
+  // Initialize PeerManager singleton (lazy — safe to call multiple times)
+  const [_initialized] = useState(() => {
+    peerManager.initializePeer();
+    return true;
+  });
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [showAnonymousStandingsModal, setShowAnonymousStandingsModal] = useState(false);
   const { isFullscreen, toggleFullscreen, isSupported: fullscreenSupported } = useFullscreen();
@@ -321,8 +325,7 @@ function HostPage() {
   // so they can sync to the correct game phase after reconnection.
   const onPlayerGetStateRef = useRef<((playerName: string) => void) | null>(null);
 
-  const { gameCode, players, broadcast, sendToPlayer, error: hostError, getAnswers, getAnswerTimestamps, updatePlayerScore, resetScores, retryWithNewCode } = useHost(
-    initialGameCode,
+  const { gameCode, players, broadcast, sendToPlayer, error: hostError, getAnswers, getAnswerTimestamps, updatePlayerScore, resetScores } = useHost(
     currentQuestionIndexRef,
     phaseRef,
     onPlayerRejoinRef,
@@ -399,11 +402,11 @@ function HostPage() {
     try {
       const parsed = JSON.parse(stored) as Quiz;
       setQuiz(parsed);
-      initGame(parsed, initialGameCode);
+      initGame(parsed, gameCode);
     } catch {
       navigate('/');
     }
-  }, [navigate, initialGameCode, initGame]);
+  }, [navigate, gameCode, initGame]);
 
   const { joinBaseUrl, detecting: detectingIp, localIp, detectedIp, manualIp, setManualIp } = useHostUrl();
   const [ipInputValue, setIpInputValue] = useState('');
@@ -747,13 +750,8 @@ function HostPage() {
           {hostError && (
             <div className="lobby-error" role="alert">
               {hostError}
-              <p className="error-suggestion">Try refreshing the page to generate a new game code.</p>
-              <button
-                type="button"
-                className="btn btn-secondary retry-btn"
-                onClick={retryWithNewCode}
-              >
-                Retry with New Code
+              <button type="button" className="btn btn-secondary retry-btn" onClick={() => window.location.reload()}>
+                Refresh Page
               </button>
             </div>
           )}
