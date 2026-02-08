@@ -376,7 +376,6 @@
 
 .question-text {
   font-family: var(--font-display);
-  font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.3;
   margin: 0;
@@ -397,7 +396,7 @@
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: 0.75rem;
-  font-size: 1rem;
+  /* font-size: removed — now inherits from parent */
   font-weight: 600;
   border: 3px solid transparent;
   min-height: 3.5rem;
@@ -407,7 +406,7 @@
 .host-option-label {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 0.8em;  /* em — scales with parent font-size */
   opacity: 0.8;
 }
 
@@ -481,6 +480,14 @@
 .host-game-actions .btn {
   width: 100%;
   max-width: 20rem;
+}
+
+/* Host game footer — wraps answer-counter + actions for layout control */
+.host-game-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .btn-reveal {
@@ -684,3 +691,205 @@
     font-size: 1.25rem;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Fullscreen Toggle Button
+   -------------------------------------------------------------------------- */
+
+.btn-fullscreen {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 2px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-bg-card);
+  color: var(--color-text-body);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-fullscreen:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary-dark);
+  color: var(--color-text-dark);
+}
+
+.btn-fullscreen:active {
+  transform: scale(0.95);
+}
+
+/* Make host phase containers position: relative so the button is scoped */
+.lobby-container,
+.host-game-container,
+.host-results-container {
+  position: relative;
+}
+
+/* --------------------------------------------------------------------------
+   Landscape Mode — left/right split for projection & large screens
+   Only affects game phases (question, answer_reveal, answer_summary).
+   Lobby and finished phases stay single-column.
+   -------------------------------------------------------------------------- */
+
+@media (orientation: landscape) and (min-width: 640px) {
+
+  /* ── Global tweaks ── */
+
+  .host-game {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .host-game > .page,
+  .host-game.page {
+    padding: 0.5rem;
+  }
+
+  /* Expand game container to use landscape width */
+  .host-game-container {
+    max-width: min(90vw, 100rem);
+  }
+
+  /* ── Question + Answer Reveal: 2-column grid layout ── */
+
+  .host-game-container:has(.question-header-bar) {
+    display: grid;
+    grid-template-columns: 40% 60%;
+    grid-template-rows: 1fr auto;
+    gap: 0 1.5rem;
+    align-items: start;
+    min-height: calc(100vh - 2rem);
+    max-height: calc(100vh - 2rem);
+  }
+
+  /* Fullscreen button: pull out of grid flow in 2-column layout */
+  .host-game-container:has(.question-header-bar) > .btn-fullscreen {
+    position: absolute;
+    grid-column: unset;
+    grid-row: unset;
+  }
+
+  /* Left panel: question */
+  .host-game-container:has(.question-header-bar) .question-header-bar {
+    grid-column: 1;
+    grid-row: 1;
+    text-align: left;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1rem 0;
+    min-height: 0;
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+  }
+
+  .host-game-container:has(.question-header-bar) .question-text {
+    font-size: inherit;  /* inherit from parent's inline style set by useFitText */
+    line-height: 1.25;
+    /* font-size is now controlled by inline style from useFitText hook */
+  }
+
+  .host-game-container:has(.question-header-bar) .question-counter {
+    font-size: 1.125rem;
+  }
+
+  /* Right panel: answer options */
+  .host-game-container:has(.question-header-bar) .host-options-grid {
+    grid-column: 2;
+    grid-row: 1;
+    margin-bottom: 0;
+    align-self: stretch;
+    grid-template-rows: 1fr 1fr;
+    gap: 1rem 0.75rem;
+    margin: 1rem 0;
+  }
+
+  .host-game-container:has(.question-header-bar) .host-option {
+    /* font-size is set via inline style by useFitText (per-option sizing) */
+    padding: 0.75rem 1rem;
+    min-height: unset;
+    height: 0;          /* ignore intrinsic content size */
+    min-height: 100%;   /* force element to be exactly grid track height */
+    position: relative;
+    overflow: hidden;
+  }
+
+  .host-game-container:has(.question-header-bar) .host-option > span:not(.answer-distribution) {
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .host-game-container:has(.question-header-bar) .host-option-label {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    font-size: 0.6em;  /* em — scales with parent font-size */
+    font-weight: 900;
+    opacity: 0.7;
+    letter-spacing: 0.05em;
+  }
+
+  /* Footer: inline row in the right panel */
+  .host-game-container:has(.question-header-bar) .host-game-footer {
+    grid-column: 2;
+    grid-row: 2;
+    flex-direction: row;
+    justify-content: right;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .host-game-container:has(.question-header-bar) .host-game-footer .answer-counter {
+    text-align: left;
+    margin-bottom: 0;
+    font-size: 0.95rem;
+  }
+
+  .host-game-container:has(.question-header-bar) .host-game-footer .host-game-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .host-game-footer .btn-icon-only {
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  /* ── Answer Summary: single column (wider) ── */
+
+  .host-game-container:has(.answer-summary-section) {
+    max-width: min(90vw, 60rem);
+  }
+
+  .answer-summary-title {
+    font-size: 1.75rem;
+  }
+
+  /* ── Fullscreen button: adjust for landscape ── */
+
+  .btn-fullscreen {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  /* ── Finished/Results phase (wider in landscape) ── */
+
+  .host-results-container {
+    max-width: min(90vw, 50rem);
+  }
+}
+

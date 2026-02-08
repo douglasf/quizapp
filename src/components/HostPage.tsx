@@ -4,6 +4,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useHost } from '../hooks/useHost';
 import { useGameState } from '../hooks/useGameState';
 import { useHostUrl } from '../hooks/useHostUrl';
+import { useFullscreen } from '../hooks/useFullscreen';
+import { useFitText } from '../hooks/useFitText';
 import { generateGameCode } from '../utils/gameCode';
 import Scoreboard from './Scoreboard';
 import type { Quiz } from '../types/quiz';
@@ -13,6 +15,118 @@ import './HostPage.css';
 const IMPORTED_QUIZ_KEY = 'quizapp_imported_quiz';
 const OPTION_COLORS = ['host-option--red', 'host-option--blue', 'host-option--yellow', 'host-option--green'] as const;
 const OPTION_LABELS = ['A', 'B', 'C', 'D'] as const;
+
+// ─── Sub-component for the Question / Answer Reveal phase ───
+// Extracted so that useFitText hooks are only called when this phase
+// is actually rendering (hooks must be at the top level of a component,
+// but this component is only mounted during question/answer_reveal).
+
+interface QuestionPhaseProps {
+  currentQuestion: Quiz['questions'][number];
+  questionIndex: number;
+  totalQuestions: number;
+  phase: 'question' | 'answer_reveal';
+  correctIndex: number;
+  answerDistribution: number[];
+  answeredCount: number;
+  totalPlayers: number;
+  fullscreenButton: React.ReactNode;
+  onRevealAnswer: () => void;
+  onShowAnswerSummary: () => void;
+}
+
+function QuestionPhase({
+  currentQuestion,
+  questionIndex,
+  totalQuestions,
+  phase,
+  correctIndex,
+  answerDistribution,
+  answeredCount,
+  totalPlayers,
+  fullscreenButton,
+  onRevealAnswer,
+  onShowAnswerSummary,
+}: QuestionPhaseProps) {
+  const questionFitText = useFitText({ maxFontSize: 36, minFontSize: 18, content: currentQuestion.text });
+  // Independent font sizing for each answer option box
+  const answerFitText0 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[0] });
+  const answerFitText1 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[1] });
+  const answerFitText2 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[2] });
+  const answerFitText3 = useFitText({ maxFontSize: 24, minFontSize: 12, content: currentQuestion.options[3] });
+  const answerFitTexts = [answerFitText0, answerFitText1, answerFitText2, answerFitText3];
+
+  return (
+    <div className="page host-game">
+      <div className="host-game-container">
+        {fullscreenButton}
+        <div 
+          ref={questionFitText.ref as React.RefObject<HTMLDivElement | null>}
+          style={{ fontSize: `${questionFitText.fontSize}px` }}
+          className="question-header-bar"
+        >
+          <div className="question-counter">
+            Question {questionIndex + 1} of {totalQuestions}
+          </div>
+          <h1 
+            className="question-text"
+          >
+            {currentQuestion.text}
+          </h1>
+        </div>
+
+        {/* Answer options */}
+        <div className="host-options-grid">
+          {currentQuestion.options.map((option, idx) => {
+            const isRevealed = phase === 'answer_reveal';
+            const isCorrect = idx === correctIndex;
+            let optionClass = `host-option ${OPTION_COLORS[idx]}`;
+            if (isRevealed && isCorrect) optionClass += ' host-option--correct';
+            if (isRevealed && !isCorrect) optionClass += ' host-option--incorrect';
+
+            return (
+              <div 
+                key={`option-${OPTION_LABELS[idx]}`} 
+                ref={answerFitTexts[idx].ref as React.RefObject<HTMLDivElement | null>}
+                style={{ fontSize: `${answerFitTexts[idx].fontSize}px` }}
+                className={optionClass}
+              >
+                <span className="host-option-label">{OPTION_LABELS[idx]}</span>
+                <span>{option}</span>
+                {isRevealed && (
+                  <span className="answer-distribution">
+                    <span className="distribution-count">{answerDistribution[idx]}</span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer: answer counter + actions */}
+        <div className="host-game-footer">
+          <div className="answer-counter">
+            <span className="answer-counter-number">{answeredCount}</span> of{' '}
+            <span className="answer-counter-number">{totalPlayers}</span> players have answered
+          </div>
+
+          <div className="host-game-actions">
+            {phase === 'question' && (
+              <button type="button" className="btn btn-reveal" onClick={onRevealAnswer} aria-label="Reveal Answer">
+                →
+              </button>
+            )}
+            {phase === 'answer_reveal' && (
+              <button type="button" className="btn btn-primary" onClick={onShowAnswerSummary} aria-label="Who Got It Right?">
+                →
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * HostPage — single component managing the entire host flow:
@@ -27,6 +141,7 @@ function HostPage() {
   const [initialGameCode] = useState(() => generateGameCode());
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [showAnonymousStandingsModal, setShowAnonymousStandingsModal] = useState(false);
+  const { isFullscreen, toggleFullscreen, isSupported: fullscreenSupported } = useFullscreen();
 
   const {
     state,
@@ -199,6 +314,7 @@ function HostPage() {
 
   const currentQuestion = quiz?.questions[state.currentQuestionIndex];
   const totalQuestions = quiz?.questions.length ?? 0;
+
   const hostAnswersForCurrent = getAnswers(state.currentQuestionIndex);
   const answeredCount = hostAnswersForCurrent.size;
   const totalPlayers = players.size;
@@ -322,12 +438,43 @@ function HostPage() {
     navigate('/');
   }, [navigate]);
 
+  // ─── Fullscreen toggle button (shown in all phases) ───
+
+  const fullscreenButton = fullscreenSupported ? (
+    <button
+      type="button"
+      className="btn-fullscreen"
+      onClick={toggleFullscreen}
+      title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+      aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+    >
+      {isFullscreen ? (
+        /* Exit-fullscreen icon (shrink arrows) */
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="4 14 10 14 10 20" />
+          <polyline points="20 10 14 10 14 4" />
+          <line x1="14" y1="10" x2="21" y2="3" />
+          <line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
+      ) : (
+        /* Enter-fullscreen icon (expand arrows) */
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 3 21 3 21 9" />
+          <polyline points="9 21 3 21 3 15" />
+          <line x1="21" y1="3" x2="14" y2="10" />
+          <line x1="3" y1="21" x2="10" y2="14" />
+        </svg>
+      )}
+    </button>
+  ) : null;
+
   // ─── Render: Lobby ───
 
   if (state.phase === 'lobby') {
     return (
       <div className="page host-lobby">
         <div className="lobby-container">
+          {fullscreenButton}
           <div className="lobby-warning">
             Keep this tab open! Closing it ends the quiz for everyone.
           </div>
@@ -464,59 +611,19 @@ function HostPage() {
 
   if ((state.phase === 'question' || state.phase === 'answer_reveal') && currentQuestion) {
     return (
-      <div className="page host-game">
-        <div className="host-game-container">
-          <div className="question-header-bar">
-            <div className="question-counter">
-              Question {state.currentQuestionIndex + 1} of {totalQuestions}
-            </div>
-            <h1 className="question-text">{currentQuestion.text}</h1>
-          </div>
-
-          {/* Answer options */}
-          <div className="host-options-grid">
-            {currentQuestion.options.map((option, idx) => {
-              const isRevealed = state.phase === 'answer_reveal';
-              const isCorrect = idx === correctIndex;
-              let optionClass = `host-option ${OPTION_COLORS[idx]}`;
-              if (isRevealed && isCorrect) optionClass += ' host-option--correct';
-              if (isRevealed && !isCorrect) optionClass += ' host-option--incorrect';
-
-              return (
-                <div key={`option-${OPTION_LABELS[idx]}`} className={optionClass}>
-                  <span className="host-option-label">{OPTION_LABELS[idx]}</span>
-                  <span>{option}</span>
-                  {isRevealed && (
-                    <span className="answer-distribution">
-                      <span className="distribution-count">{answerDistribution[idx]}</span>
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Answer counter */}
-          <div className="answer-counter">
-            <span className="answer-counter-number">{answeredCount}</span> of{' '}
-            <span className="answer-counter-number">{totalPlayers}</span> players have answered
-          </div>
-
-          {/* Actions */}
-          <div className="host-game-actions">
-            {state.phase === 'question' && (
-              <button type="button" className="btn btn-reveal" onClick={handleRevealAnswer}>
-                Reveal Answer
-              </button>
-            )}
-            {state.phase === 'answer_reveal' && (
-              <button type="button" className="btn btn-primary" onClick={handleShowAnswerSummary}>
-                Who Got It Right?
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <QuestionPhase
+        currentQuestion={currentQuestion}
+        questionIndex={state.currentQuestionIndex}
+        totalQuestions={totalQuestions}
+        phase={state.phase}
+        correctIndex={correctIndex ?? -1}
+        answerDistribution={answerDistribution}
+        answeredCount={answeredCount}
+        totalPlayers={totalPlayers}
+        fullscreenButton={fullscreenButton}
+        onRevealAnswer={handleRevealAnswer}
+        onShowAnswerSummary={handleShowAnswerSummary}
+      />
     );
   }
 
@@ -532,6 +639,7 @@ function HostPage() {
     return (
       <div className="page host-game">
         <div className="host-game-container">
+          {fullscreenButton}
           <div className="answer-summary-section">
             <h2 className="answer-summary-title">Who Got It Right?</h2>
             <div className="answer-summary-list">
@@ -586,6 +694,7 @@ function HostPage() {
     return (
       <div className="page host-results">
         <div className="host-results-container">
+          {fullscreenButton}
           <h1 className="results-title">Final Results</h1>
           <p className="results-subtitle">Great game, everyone!</p>
 
