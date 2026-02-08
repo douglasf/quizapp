@@ -7,7 +7,7 @@ export type PlayerMessage =
   | { type: 'join'; name: string }
   | { type: 'rejoin'; name: string }
   | { type: 'get_state'; name: string }
-  | { type: 'answer'; questionIndex: number; answer: number; answeredAt?: number }
+  | { type: 'answer'; questionIndex: number; answer: number | number[]; answeredAt?: number }
   | { type: 'ping' };
 
 // Host -> Player messages
@@ -16,14 +16,16 @@ export type HostMessage =
   | { type: 'rejoin_success'; playerName: string; gameCode: string; score: number; currentQuestionIndex: number; phase: string }
   | { type: 'game_state'; phase: string; currentQuestionIndex: number; score: number; standings?: { name: string; score: number; rank: number }[] }
   | { type: 'player_list'; players: { name: string; connected: boolean }[] }
-  | { type: 'question'; index: number; total: number; text: string; options: [string, string, string, string]; timeLimitSeconds: number; questionType: QuestionType; sliderMin?: number; sliderMax?: number }
+  | { type: 'question'; index: number; total: number; text: string; options: string[]; timeLimitSeconds: number; questionType: QuestionType; sliderMin?: number; sliderMax?: number }
   | { type: 'answer_ack'; questionIndex: number }
   | {
       type: 'answer_reveal';
       questionIndex: number;
       questionType: QuestionType;
-      correctAnswer: number; // correctIndex for MC/TF, correctValue for slider
-      yourAnswer: number | null;
+      correctAnswer?: number; // correctIndex for MC/TF, correctValue for slider
+      correctAnswers?: number[]; // for multi_choice (array of correct indices)
+      yourAnswer?: number | null; // for MC/TF/slider
+      yourAnswers?: number[]; // for multi_choice (array of selected indices)
       correct: boolean;
       scoreGained: number;
       closeness?: number; // distance from correct answer (slider only)

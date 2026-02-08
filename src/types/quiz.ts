@@ -1,6 +1,6 @@
 // Quiz data structures for export/import
 
-export type QuestionType = 'multiple_choice' | 'true_false' | 'slider';
+export type QuestionType = 'multiple_choice' | 'true_false' | 'slider' | 'multi_choice';
 
 export interface Quiz {
   title: string;
@@ -10,8 +10,9 @@ export interface Quiz {
 
 export interface Question {
   text: string;
-  options: [string, string, string, string];
-  correctIndex: number; // 0-3
+  options: string[]; // MC/TF: 4 elements, multi_choice: 2-8 elements
+  correctIndex: number; // 0-3 for MC, 0-1 for TF (kept for backward compat)
+  correctIndices?: number[]; // used for multi_choice questions (multiple correct answers)
   correctValue?: number; // used for slider questions (must be within sliderMin–sliderMax)
   sliderMin?: number; // minimum slider value (defaults to 0)
   sliderMax?: number; // maximum slider value (defaults to 100)

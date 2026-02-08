@@ -161,6 +161,38 @@
   margin-bottom: 0.5rem;
 }
 
+/* Dynamic option rows for multi-choice */
+.option-row-dynamic {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.option-row-dynamic input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+.option-row-dynamic input[type="text"] {
+  flex: 1;
+}
+
+.option-row-dynamic .btn-icon {
+  flex-shrink: 0;
+}
+
+.option-checkbox {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-primary-dark);
+  cursor: pointer;
+}
+
+.btn-add-option {
+  margin-top: 0.25rem;
+}
+
 .option-radio {
   width: 20px;
   height: 20px;

@@ -5,12 +5,13 @@ export interface ValidationResult {
   errors: string[];
 }
 
-const VALID_QUESTION_TYPES = ['multiple_choice', 'true_false', 'slider'] as const;
+const VALID_QUESTION_TYPES = ['multiple_choice', 'true_false', 'slider', 'multi_choice'] as const;
 
 interface RawQuestion {
   text?: unknown;
   options?: unknown;
   correctIndex?: unknown;
+  correctIndices?: unknown;
   correctValue?: unknown;
   sliderMin?: unknown;
   sliderMax?: unknown;
@@ -116,6 +117,30 @@ export function validateQuiz(data: unknown): ValidationResult {
           q.correctValue > sMax
         ) {
           errors.push(`Question ${i + 1}: "correctValue" must be a number between ${sMin} and ${sMax}`);
+        }
+      } else if (qType === 'multi_choice') {
+        // Multi-choice: variable option count (2-8), multiple correct answers
+        if (!Array.isArray(q.options) || q.options.length < 2 || q.options.length > 8) {
+          errors.push(`Question ${i + 1}: multi-choice must have 2-8 options`);
+        } else {
+          if (q.options.some((o: unknown) => typeof o !== 'string' || (o as string).trim() === '')) {
+            errors.push(`Question ${i + 1}: all options must be non-empty strings`);
+          }
+        }
+
+        // correctIndices required, must be an array with 1+ elements
+        if (!Array.isArray(q.correctIndices) || q.correctIndices.length === 0) {
+          errors.push(`Question ${i + 1}: must select at least 1 correct answer`);
+        } else {
+          const optLen = Array.isArray(q.options) ? q.options.length : 0;
+          // All indices must be in bounds
+          if (q.correctIndices.some((idx: unknown) => typeof idx !== 'number' || (idx as number) < 0 || (idx as number) >= optLen)) {
+            errors.push(`Question ${i + 1}: correctIndices out of bounds`);
+          }
+          // No duplicates
+          if (new Set(q.correctIndices as unknown[]).size !== q.correctIndices.length) {
+            errors.push(`Question ${i + 1}: correctIndices must have unique values`);
+          }
         }
       }
 

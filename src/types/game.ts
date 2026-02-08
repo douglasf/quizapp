@@ -20,6 +20,10 @@ export interface AnswerSummaryResult {
   playerAnswer?: number;
   /** For slider questions: distance from correct answer */
   closeness?: number;
+  /** For multi_choice questions: indices the player selected */
+  yourAnswers?: number[];
+  /** For multi_choice questions: indices that were correct */
+  correctAnswers?: number[];
 }
 
 // Player-side minimal state
@@ -39,7 +43,7 @@ export interface PlayerQuestion {
   index: number;
   total: number;
   text: string;
-  options: [string, string, string, string];
+  options: string[];
   timeLimitSeconds: number;
   questionType: QuestionType;
   sliderMin?: number; // minimum slider value (defaults to 0)

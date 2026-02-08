@@ -1,14 +1,23 @@
 # Quiz App TODO
 
-## HIGH PRIORITY (TV-Ready Polish)
+## HIGH PRIORITY
 
+- [ ] BUG: QR Code Screen Shows "Game Code Taken" Error on Initial Load — every load shows error then fetches new code that works
+- [ ] FEATURE: Swedish Translation Support — add Swedish lang at `/quizapp/sv/`, English at `/quizapp/en/`, with flag toggle on start screen
+
+### Completed (TV-Ready Polish)
 - [x] Remove 6 debug console.logs from useFitText.ts (lines 43, 55, 59, 69, 83, 92)
 - [x] Fix `justify-content: right` → `flex-end` in HostPage.css line 842 (potential cross-browser bug)
 - [x] Add landscape layout for answer summary phase — multi-column grid to prevent long scrolling with many players
 - [x] Scale Scoreboard component for landscape — widen max-width and expand podium for TV widescreen displays
 
-## MEDIUM PRIORITY (New Game Mechanics)
+## COMPLETED (Game Mechanics)
 
+- [x] Multi-Choice Scoring Formula (Completed)
+  - Base score for correct answers
+  - Wrong answers subtract points directly
+  - Speed bonus: 150 points
+  - Perfect bonus: +200 only for 100% correct answers
 - [x] Add question timer (configurable default) and award points based on answer speed — faster answer = more points
   - ✅ Implemented: `timeLimitSeconds` per question (5-120s, default 30s)
   - ✅ Speed-based scoring: 1000 pts max, scales down to 0 at timeout
@@ -142,6 +151,7 @@ Allow quizzes to have questions with any number of options (5, 6, 7, 8, etc.) in
 
 ## Recent Work (Committed)
 
+✅ Multi-Choice scoring formula rebalanced (wrong answers subtract points directly, speed bonus 150, perfect bonus only for perfect answers)
 ✅ Fullscreen mode for TV projection (landscape 2-column layout)
 ✅ Per-answer-box font sizing (`useFitText` hook with independent measurement)
 ✅ Dynamic text shrinking for long questions and answers

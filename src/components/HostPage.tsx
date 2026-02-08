@@ -29,6 +29,7 @@ interface QuestionPhaseProps {
   totalQuestions: number;
   phase: 'question' | 'answer_reveal';
   correctIndex: number;
+  correctIndices: number[];
   answerDistribution: number[];
   answeredCount: number;
   totalPlayers: number;
@@ -45,6 +46,7 @@ function QuestionPhase({
   totalQuestions,
   phase,
   correctIndex,
+  correctIndices,
   answerDistribution,
   answeredCount,
   totalPlayers,
@@ -57,9 +59,10 @@ function QuestionPhase({
   const questionType = currentQuestion.type ?? 'multiple_choice';
   const isSlider = questionType === 'slider';
   const isTrueFalse = questionType === 'true_false';
+  const isMultiChoice = questionType === 'multi_choice';
 
   // How many option boxes to render
-  const optionCount = isSlider ? 0 : isTrueFalse ? 2 : 4;
+  const optionCount = isSlider ? 0 : isMultiChoice ? 0 : isTrueFalse ? 2 : 4;
   const activeLabels = OPTION_LABELS.slice(0, optionCount);
   const activeColors = OPTION_COLORS.slice(0, optionCount);
 
@@ -178,6 +181,32 @@ function QuestionPhase({
                 <div className="host-slider-value">Correct answer: {sliderCorrectValue}</div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Multi-choice options (vertical list) ── */}
+        {isMultiChoice && (
+          <div className="host-options-list">
+            {currentQuestion.options.map((option, idx) => {
+              const isRevealed = phase === 'answer_reveal';
+              const isCorrect = correctIndices.includes(idx);
+              let itemClass = 'host-option-item host-option-item--multi-choice';
+              if (isRevealed && isCorrect) itemClass += ' host-option-item--correct';
+              if (isRevealed && !isCorrect) itemClass += ' host-option-item--incorrect';
+
+              return (
+                <div key={`mc-option-${idx}`} className={itemClass}>
+                  <span className="option-label">{String.fromCharCode(65 + idx)}</span>
+                  <span className="option-text">{option}</span>
+                  {isRevealed && isCorrect && <span className="option-check">{'\u2713'}</span>}
+                  {isRevealed && (
+                    <span className="answer-distribution">
+                      <span className="distribution-count">{answerDistribution[idx] ?? 0}</span>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -469,12 +498,20 @@ function HostPage() {
   // changes (via syncPlayersState on each answer), which gives us a fresh read of the
   // mutable answers Map. Iterating up to 20 entries is trivially cheap.
   const answerDistribution = (() => {
-    const dist = [0, 0, 0, 0];
+    const optionsLen = currentQuestion?.options.length ?? 4;
+    const dist = new Array<number>(optionsLen).fill(0);
     const qType = currentQuestion?.type ?? 'multiple_choice';
     // For slider questions, distribution doesn't map to option indices
     if (qType === 'slider') return dist;
     for (const answer of hostAnswersForCurrent.values()) {
-      if (answer >= 0 && answer < 4) {
+      if (qType === 'multi_choice' && Array.isArray(answer)) {
+        // Multi-choice: each selected index gets a count
+        for (const idx of answer) {
+          if (idx >= 0 && idx < optionsLen) {
+            dist[idx]++;
+          }
+        }
+      } else if (typeof answer === 'number' && answer >= 0 && answer < optionsLen) {
         dist[answer]++;
       }
     }
@@ -489,9 +526,12 @@ function HostPage() {
     const questionStartedAt = questionStartedAtRef.current;
     const timeLimitSeconds = currentQuestion.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS;
     const questionType: QuestionType = currentQuestion.type ?? 'multiple_choice';
-    const correctAnswer = questionType === 'slider'
-      ? (currentQuestion.correctValue ?? 50)
-      : currentQuestion.correctIndex;
+    const isMultiChoiceQ = questionType === 'multi_choice';
+    const correctAnswer: number | number[] = isMultiChoiceQ
+      ? (currentQuestion.correctIndices ?? [])
+      : questionType === 'slider'
+        ? (currentQuestion.correctValue ?? 50)
+        : currentQuestion.correctIndex;
 
     // Compute and apply scores using useHost's answer data (for ALL players who answered)
     const answers = getAnswers(state.currentQuestionIndex);
@@ -539,8 +579,12 @@ function HostPage() {
         name: player.name,
         correct,
         scoreGained,
-        ...(questionType === 'slider' && playerAnswer !== undefined
-          ? { playerAnswer, closeness: Math.abs(playerAnswer - correctAnswer) }
+        ...(isMultiChoiceQ && {
+          yourAnswers: Array.isArray(playerAnswer) ? playerAnswer : [],
+          correctAnswers: Array.isArray(correctAnswer) ? correctAnswer : [],
+        }),
+        ...(questionType === 'slider' && playerAnswer !== undefined && typeof playerAnswer === 'number'
+          ? { playerAnswer, closeness: Math.abs(playerAnswer - (typeof correctAnswer === 'number' ? correctAnswer : 0)) }
           : {}),
       });
     }
@@ -554,27 +598,46 @@ function HostPage() {
 
       const playerKey = player.name.trim().toLowerCase();
       const playerAnswer = answers.get(playerKey);
-      const correct = isAnswerCorrect(questionType, playerAnswer ?? -1, correctAnswer);
 
       // Find this player's scoreGained from revealResults
       const playerResult = revealResults.find(r => r.name === player.name);
       const scoreGained = playerResult?.scoreGained ?? 0;
 
-      // Build the reveal message with type-specific fields
-      const revealMsg: Parameters<typeof sendToPlayer>[1] = {
-        type: 'answer_reveal',
-        questionIndex: state.currentQuestionIndex,
-        questionType,
-        correctAnswer,
-        yourAnswer: playerAnswer ?? null,
-        correct: playerAnswer !== undefined ? correct : false,
-        scoreGained,
-        ...(questionType === 'slider' && playerAnswer !== undefined
-          ? { closeness: Math.abs(playerAnswer - correctAnswer) }
-          : {}),
-      };
+      if (isMultiChoiceQ) {
+        // Multi-choice: send correctAnswers[] and yourAnswers[]
+        const playerAnswerIndices = Array.isArray(playerAnswer) ? playerAnswer : [];
+        const correctIndicesArr = Array.isArray(correctAnswer) ? correctAnswer : [];
+        const correct = playerAnswerIndices.length === correctIndicesArr.length &&
+                        correctIndicesArr.every(idx => playerAnswerIndices.includes(idx));
 
-      sendToPlayer(player.name, revealMsg);
+        sendToPlayer(player.name, {
+          type: 'answer_reveal',
+          questionIndex: state.currentQuestionIndex,
+          questionType,
+          correctAnswers: correctIndicesArr,
+          yourAnswers: playerAnswerIndices,
+          correct: playerAnswer !== undefined ? correct : false,
+          scoreGained,
+        });
+      } else {
+        // MC/TF/Slider: send single correctAnswer and yourAnswer
+        const correct = isAnswerCorrect(questionType, playerAnswer ?? -1, correctAnswer);
+        const singlePlayerAnswer = typeof playerAnswer === 'number' ? playerAnswer : null;
+        const singleCorrectAnswer = typeof correctAnswer === 'number' ? correctAnswer : 0;
+
+        sendToPlayer(player.name, {
+          type: 'answer_reveal',
+          questionIndex: state.currentQuestionIndex,
+          questionType,
+          correctAnswer: singleCorrectAnswer,
+          yourAnswer: singlePlayerAnswer,
+          correct: playerAnswer !== undefined ? correct : false,
+          scoreGained,
+          ...(questionType === 'slider' && typeof playerAnswer === 'number'
+            ? { closeness: Math.abs(playerAnswer - singleCorrectAnswer) }
+            : {}),
+        });
+      }
     }
   }, [quiz, currentQuestion, revealAnswer, players, getAnswers, getAnswerTimestamps, state.currentQuestionIndex, sendToPlayer, updatePlayerScore]);
 
@@ -810,6 +873,7 @@ function HostPage() {
         totalQuestions={totalQuestions}
         phase={state.phase}
         correctIndex={correctIndex ?? -1}
+        correctIndices={currentQuestion.correctIndices ?? []}
         answerDistribution={answerDistribution}
         answeredCount={answeredCount}
         totalPlayers={totalPlayers}
@@ -827,6 +891,7 @@ function HostPage() {
   if (state.phase === 'answer_summary') {
     const currentQType: QuestionType = currentQuestion?.type ?? 'multiple_choice';
     const isSliderSummary = currentQType === 'slider';
+    const isMultiChoiceSummary = currentQType === 'multi_choice';
 
     // Sort results: for slider, by score descending; for MC/TF, correct first then alphabetical
     const sortedResults = [...lastRevealResultsRef.current].sort((a, b) => {
@@ -863,6 +928,24 @@ function HostPage() {
                       <span className="answer-summary-result">{result.correct ? '\u2713' : '\u2717'}</span>
                     )}
                     <span className="answer-summary-name">{result.name}</span>
+                    {isMultiChoiceSummary && (
+                      <span className="answer-summary-mc-details">
+                        <span className="answer-summary-mc-row">
+                          <span className="answer-summary-label">Selected:</span>
+                          <span className="answer-summary-values">
+                            {(result.yourAnswers ?? []).length === 0
+                              ? '(none)'
+                              : (result.yourAnswers ?? []).map(idx => String.fromCharCode(65 + idx)).join(', ')}
+                          </span>
+                        </span>
+                        <span className="answer-summary-mc-row">
+                          <span className="answer-summary-label">Correct:</span>
+                          <span className="answer-summary-values">
+                            {(result.correctAnswers ?? []).map(idx => String.fromCharCode(65 + idx)).join(', ')}
+                          </span>
+                        </span>
+                      </span>
+                    )}
                     {isSliderSummary && result.closeness !== undefined && (
                       <span className="answer-summary-closeness">
                         {result.closeness === 0 ? 'Perfect!' : `off by ${result.closeness}`}

@@ -7,43 +7,66 @@ import './QuizCreator.css'
 
 let questionIdCounter = 0;
 
-function createEmptyQuestion(): Question & { _id: number } {
-  return {
+function createEmptyQuestion(questionType: QuestionType = 'multiple_choice'): Question & { _id: number } {
+  const base = {
     _id: ++questionIdCounter,
     text: '',
-    options: ['', '', '', ''],
-    correctIndex: 0,
     correctValue: 50,
     sliderMin: 0,
     sliderMax: 100,
     timeLimitSeconds: DEFAULT_TIME_LIMIT_SECONDS,
-    type: 'multiple_choice',
+  };
+
+  if (questionType === 'multi_choice') {
+    return {
+      ...base,
+      options: ['', ''],
+      correctIndex: 0,
+      correctIndices: [],
+      type: 'multi_choice',
+    };
   }
+
+  return {
+    ...base,
+    options: ['', '', '', ''],
+    correctIndex: 0,
+    type: questionType,
+  };
 }
 
 // Strip the _id field before saving, and clean up type-specific fields
 function stripIds(questions: (Question & { _id?: number })[]): Question[] {
-  return questions.map(({ text, options, correctIndex, correctValue, sliderMin, sliderMax, timeLimitSeconds, type }) => {
-    const qType = type ?? 'multiple_choice';
-    const base = { text, timeLimitSeconds, type };
+  return questions.map(q => {
+    const qType = q.type ?? 'multiple_choice';
+    const base = { text: q.text, timeLimitSeconds: q.timeLimitSeconds, type: q.type };
 
     if (qType === 'slider') {
       // Slider questions don't use options/correctIndex — provide sensible defaults
       return {
         ...base,
-        options: ['', '', '', ''] as [string, string, string, string],
+        options: ['', '', '', ''],
         correctIndex: 0,
-        correctValue: correctValue ?? 50,
-        sliderMin: sliderMin ?? 0,
-        sliderMax: sliderMax ?? 100,
+        correctValue: q.correctValue ?? 50,
+        sliderMin: q.sliderMin ?? 0,
+        sliderMax: q.sliderMax ?? 100,
+      };
+    }
+
+    if (qType === 'multi_choice') {
+      return {
+        ...base,
+        options: q.options,
+        correctIndex: 0,
+        correctIndices: q.correctIndices ?? [],
       };
     }
 
     return {
       ...base,
-      options,
-      correctIndex,
-      ...(correctValue !== undefined ? { correctValue } : {}),
+      options: q.options,
+      correctIndex: q.correctIndex,
+      ...(q.correctValue !== undefined ? { correctValue: q.correctValue } : {}),
     };
   });
 }
@@ -83,7 +106,7 @@ function QuizCreator() {
 
   function updateOption(questionIndex: number, optionIndex: number, value: string) {
     const q = questions[questionIndex]
-    const options = [...q.options] as [string, string, string, string]
+    const options = [...q.options]
     options[optionIndex] = value
     updateQuestion(questionIndex, { ...q, options })
   }
@@ -107,7 +130,7 @@ function QuizCreator() {
       updated = {
         ...updated,
         correctIndex: Math.min(q.correctIndex, 1),
-        options: ['False', 'True', '', ''] as [string, string, string, string],
+        options: ['False', 'True', '', ''],
       }
     } else if (type === 'slider') {
       // Ensure correctValue and slider range have defaults
@@ -115,6 +138,23 @@ function QuizCreator() {
       const sMax = q.sliderMax ?? 100
       const mid = Math.round((sMin + sMax) / 2)
       updated = { ...updated, correctValue: q.correctValue ?? mid, sliderMin: sMin, sliderMax: sMax }
+    } else if (type === 'multi_choice') {
+      // Initialize with 2 empty options and empty correctIndices
+      updated = {
+        ...updated,
+        options: ['', ''],
+        correctIndices: [],
+        correctIndex: 0,
+      }
+    } else if (type === 'multiple_choice') {
+      // Switching back to MC: ensure 4 options
+      const opts = [...q.options]
+      while (opts.length < 4) opts.push('')
+      updated = {
+        ...updated,
+        options: opts.slice(0, 4),
+        correctIndex: q.correctIndex < 4 ? q.correctIndex : 0,
+      }
     }
     updateQuestion(index, updated)
   }
@@ -122,6 +162,34 @@ function QuizCreator() {
   function updateCorrectValue(index: number, value: number) {
     const q = questions[index]
     updateQuestion(index, { ...q, correctValue: value })
+  }
+
+  function toggleCorrectIndex(questionIndex: number, optionIndex: number) {
+    const q = questions[questionIndex]
+    const current = q.correctIndices ?? []
+    const updated = current.includes(optionIndex)
+      ? current.filter(idx => idx !== optionIndex)
+      : [...current, optionIndex]
+    updateQuestion(questionIndex, { ...q, correctIndices: updated })
+  }
+
+  function addOption(questionIndex: number) {
+    const q = questions[questionIndex]
+    if (q.options.length >= 8) return // max 8 options
+    const newOptions = [...q.options, '']
+    updateQuestion(questionIndex, { ...q, options: newOptions })
+  }
+
+  function removeOption(questionIndex: number, optionIndex: number) {
+    const q = questions[questionIndex]
+    if (q.options.length <= 2) return // min 2 options
+    const newOptions = q.options.filter((_, idx) => idx !== optionIndex)
+    // Clean up correctIndices: remove deleted index, shift indices above it
+    let correctIndices = q.correctIndices ?? []
+    correctIndices = correctIndices
+      .filter(idx => idx !== optionIndex)
+      .map(idx => idx > optionIndex ? idx - 1 : idx)
+    updateQuestion(questionIndex, { ...q, options: newOptions, correctIndices })
   }
 
   function addQuestion() {
@@ -270,7 +338,8 @@ function QuizCreator() {
                   value={q.type ?? 'multiple_choice'}
                   onChange={(e) => updateQuestionType(qIndex, e.target.value as QuestionType)}
                 >
-                  <option value="multiple_choice">Multiple Choice (4 options)</option>
+                  <option value="multiple_choice">Choice (4 options)</option>
+                  <option value="multi_choice">Multi-Choice (multiple answers)</option>
                   <option value="true_false">True / False (2 options)</option>
                   <option value="slider">Slider (numeric range)</option>
                 </select>
@@ -428,6 +497,53 @@ function QuizCreator() {
                     <p className="hint">Enter the correct numeric answer between {q.sliderMin ?? 0} and {q.sliderMax ?? 100}.</p>
                   </div>
                 </div>
+              ) : (q.type ?? 'multiple_choice') === 'multi_choice' ? (
+                /* Multi-Choice: dynamic options with checkboxes */
+                <fieldset className="options-group">
+                  <legend className="form-label">Answer Options (select all correct answers with checkboxes)</legend>
+                  {q.options.map((opt, oIndex) => (
+                    <div key={`${q._id}-opt-${oIndex}`} className="option-row-dynamic">
+                      <input
+                        type="checkbox"
+                        id={`q-${q._id}-correct-${oIndex}`}
+                        className="option-checkbox"
+                        checked={q.correctIndices?.includes(oIndex) ?? false}
+                        onChange={() => toggleCorrectIndex(qIndex, oIndex)}
+                        aria-label={`Mark option ${oIndex + 1} as correct`}
+                      />
+                      <input
+                        type="text"
+                        id={`q-${q._id}-opt-${oIndex}`}
+                        className="form-input option-input"
+                        placeholder={`Option ${oIndex + 1}`}
+                        value={opt}
+                        onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
+                        aria-label={`Option ${oIndex + 1} text`}
+                      />
+                      {q.options.length > 2 && (
+                        <button
+                          type="button"
+                          className="btn-icon btn-icon-danger"
+                          title="Remove option"
+                          onClick={() => removeOption(qIndex, oIndex)}
+                          aria-label={`Remove option ${oIndex + 1}`}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {q.options.length < 8 && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-add-option"
+                      onClick={() => addOption(qIndex)}
+                    >
+                      + Add Option
+                    </button>
+                  )}
+                  <p className="hint">Check the boxes next to all correct answers. You can have 2-8 options.</p>
+                </fieldset>
               ) : (
                 /* Multiple Choice or True/False: radio + text inputs */
                 <fieldset className="options-group">

@@ -15,7 +15,9 @@ type PlayerPhase = 'waiting' | 'answering' | 'submitted' | 'reveal' | 'finished'
 interface RevealData {
   questionType: QuestionType;
   correctAnswer: number; // correctIndex for MC/TF, correctValue for slider
+  correctAnswers?: number[]; // multi_choice: array of correct indices
   yourAnswer: number | null;
+  yourAnswers?: number[]; // multi_choice: array of player's selected indices
   correct: boolean;
   scoreGained: number;
   closeness?: number; // slider only: distance from correct answer
@@ -56,11 +58,13 @@ function PlayerGame() {
   const timerExpiredRef = useRef(false);
 
   const [sliderValue, setSliderValue] = useState(50);
+  const [selectedAnswers, setSelectedAnswers] = useState<Set<number>>(new Set());
 
   // Derived question type for the current question
   const questionType: QuestionType = (currentQuestion?.questionType as QuestionType) ?? 'multiple_choice';
   const isSlider = questionType === 'slider';
   const isTrueFalse = questionType === 'true_false';
+  const isMultiChoice = questionType === 'multi_choice';
 
   // Send get_state message when connection opens so the host sends us the current game state
   useEffect(() => {
@@ -117,6 +121,7 @@ function PlayerGame() {
           sliderMax: qSliderMax,
         });
         setSelectedAnswer(null);
+        setSelectedAnswers(new Set());
         setRevealData(null);
         setSliderValue(Math.round((qSliderMin + qSliderMax) / 2));
         setPhase('answering');
@@ -132,8 +137,10 @@ function PlayerGame() {
       case 'answer_reveal': {
         setRevealData({
           questionType: msg.questionType,
-          correctAnswer: msg.correctAnswer,
-          yourAnswer: msg.yourAnswer,
+          correctAnswer: msg.correctAnswer ?? 0,
+          correctAnswers: msg.correctAnswers,
+          yourAnswer: msg.yourAnswer ?? null,
+          yourAnswers: msg.yourAnswers,
           correct: msg.correct,
           scoreGained: msg.scoreGained,
           closeness: msg.closeness,
@@ -151,6 +158,7 @@ function PlayerGame() {
         setPhase('waiting');
         setCurrentQuestion(null);
         setSelectedAnswer(null);
+        setSelectedAnswers(new Set());
         setRevealData(null);
         setStandings([]);
         break;
@@ -196,6 +204,27 @@ function PlayerGame() {
     setSelectedAnswer(sliderValue);
     handleSubmitAnswer(sliderValue);
   }, [phase, selectedAnswer, sliderValue, handleSubmitAnswer]);
+
+  const handleMultiChoiceToggle = useCallback((optionIndex: number) => {
+    if (phase !== 'answering' || selectedAnswer !== null || timerExpiredRef.current) return;
+    setSelectedAnswers(prev => {
+      const next = new Set(prev);
+      if (next.has(optionIndex)) {
+        next.delete(optionIndex);
+      } else {
+        next.add(optionIndex);
+      }
+      return next;
+    });
+  }, [phase, selectedAnswer]);
+
+  const handleMultiChoiceSubmit = useCallback(() => {
+    if (phase !== 'answering' || selectedAnswer !== null || timerExpiredRef.current) return;
+    if (selectedAnswers.size === 0) return;
+    const sorted = Array.from(selectedAnswers).sort((a, b) => a - b);
+    setSelectedAnswer(0); // mark as submitted (non-null)
+    handleSubmitAnswer(sorted);
+  }, [phase, selectedAnswer, selectedAnswers, handleSubmitAnswer]);
 
   const handleRefresh = useCallback(() => {
     window.location.reload();
@@ -344,8 +373,51 @@ function PlayerGame() {
               );
             })()}
 
+            {/* ── Multi-choice checkbox options ── */}
+            {isMultiChoice && (
+              <div className="answer-grid answer-grid--multi-choice">
+                {selectedAnswer === null && !timerExpiredRef.current ? (
+                  <>
+                    {currentQuestion.options.map((option, idx) => {
+                      const isChecked = selectedAnswers.has(idx);
+                      return (
+                        <label
+                          key={`mc-${ANSWER_LABELS[idx] ?? idx}`}
+                          className={`multi-choice-label${isChecked ? ' multi-choice-label--checked' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="multi-choice-checkbox"
+                            checked={isChecked}
+                            onChange={() => handleMultiChoiceToggle(idx)}
+                          />
+                          <span className="multi-choice-letter">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
+                          <span className="multi-choice-text">{option}</span>
+                        </label>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      className="btn btn-primary multi-choice-submit"
+                      onClick={handleMultiChoiceSubmit}
+                      disabled={selectedAnswers.size === 0}
+                    >
+                      Submit ({selectedAnswers.size} selected)
+                    </button>
+                  </>
+                ) : (
+                  <div className="multi-choice-submitted">
+                    <div className="submitted-check">{'\u2705'}</div>
+                    <div className="multi-choice-submitted-label">
+                      {timerExpiredRef.current && selectedAnswer === null ? "Time's up!" : 'Answer locked in!'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── MC / TF option buttons ── */}
-            {!isSlider && (
+            {!isSlider && !isMultiChoice && (
               <div className={`answer-grid${isTrueFalse ? ' answer-grid--two' : ''}`}>
                 {currentQuestion.options.slice(0, isTrueFalse ? 2 : 4).map((option, idx) => {
                   // Defensive: hardcode True/False labels for backward compat with old quiz JSON
@@ -427,6 +499,39 @@ function PlayerGame() {
                         <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
                         {displayText}
                       </button>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Multi-choice reveal: show vertical list with correct/wrong/player-selected highlighting */}
+            {revealData.questionType === 'multi_choice' && (() => {
+              const correctSet = new Set(revealData.correctAnswers ?? []);
+              const playerSet = new Set(revealData.yourAnswers ?? []);
+              return (
+                <div className="answer-grid answer-grid--reveal answer-grid--multi-choice">
+                  {currentQuestion.options.map((option, idx) => {
+                    const isCorrect = correctSet.has(idx);
+                    const isSelected = playerSet.has(idx);
+                    let optionClass = 'reveal-option';
+                    if (isCorrect && isSelected) {
+                      optionClass += ' reveal-option--correct-selected';
+                    } else if (isCorrect && !isSelected) {
+                      optionClass += ' reveal-option--correct-missed';
+                    } else if (!isCorrect && isSelected) {
+                      optionClass += ' reveal-option--wrong-selected';
+                    } else {
+                      optionClass += ' reveal-option--neutral';
+                    }
+
+                    return (
+                      <div key={`mc-reveal-${ANSWER_LABELS[idx] ?? idx}`} className={optionClass}>
+                        <span className="reveal-option-letter">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
+                        <span className="reveal-option-text">{option}</span>
+                        {isCorrect && <span className="reveal-badge">{'\u2713'}</span>}
+                        {!isCorrect && isSelected && <span className="reveal-badge reveal-badge--wrong">{'\u2717'}</span>}
+                      </div>
                     );
                   })}
                 </div>

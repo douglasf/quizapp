@@ -20,8 +20,8 @@ export interface UseHostReturn {
   players: Map<string, Player>;
   broadcast: (msg: HostMessage) => void;
   sendToPlayer: (playerName: string, msg: HostMessage) => void;
-  addAnswer: (playerName: string, questionIndex: number, answer: number, answeredAt?: number) => void;
-  getAnswers: (questionIndex: number) => Map<string, number>;
+  addAnswer: (playerName: string, questionIndex: number, answer: number | number[], answeredAt?: number) => void;
+  getAnswers: (questionIndex: number) => Map<string, number | number[]>;
   getAnswerTimestamps: (questionIndex: number) => Map<string, number>;
   updatePlayerScore: (playerName: string, delta: number) => void;
   resetScores: () => void;
@@ -56,8 +56,8 @@ export function useHost(
   const connectionsRef = useRef<Map<string, DataConnection>>(new Map()); // keyed by peerId
   const playersRef = useRef<Map<string, Player>>(new Map()); // keyed by player name (lowercase)
   // answers per question: Map<questionIndex, Map<playerName, answer>>
-  // answer is optionIndex (0-3) for MC/TF, or numeric value (within slider range) for slider
-  const answersRef = useRef<Map<number, Map<string, number>>>(new Map());
+  // answer is optionIndex (0-3) for MC/TF, numeric value for slider, or number[] for multi_choice
+  const answersRef = useRef<Map<number, Map<string, number | number[]>>>(new Map());
   // answer timestamps per question: Map<questionIndex, Map<playerName, timestamp>>
   const answerTimestampsRef = useRef<Map<number, Map<string, number>>>(new Map());
   // Track retry attempts for unavailable-id errors
@@ -107,7 +107,7 @@ export function useHost(
   // ---------- answer tracking ----------
 
   const addAnswer = useCallback(
-    (playerName: string, questionIndex: number, answer: number, answeredAt?: number) => {
+    (playerName: string, questionIndex: number, answer: number | number[], answeredAt?: number) => {
       if (!answersRef.current.has(questionIndex)) {
         answersRef.current.set(questionIndex, new Map());
       }
@@ -129,7 +129,7 @@ export function useHost(
     [],
   );
 
-  const getAnswers = useCallback((questionIndex: number): Map<string, number> => {
+  const getAnswers = useCallback((questionIndex: number): Map<string, number | number[]> => {
     return answersRef.current.get(questionIndex) ?? new Map();
   }, []);
 

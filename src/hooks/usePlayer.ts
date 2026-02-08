@@ -16,7 +16,7 @@ export interface UsePlayerReturn {
   handleJoin: (name: string) => void;
   handleRejoin: (name: string) => void;
   handleGetState: (name: string) => void;
-  handleSubmitAnswer: (answer: number) => void;
+  handleSubmitAnswer: (answer: number | number[]) => void;
   onMessage: (handler: (msg: HostMessage) => void) => void;
   onError: (handler: (error: string) => void) => void;
   isLoading: boolean;
@@ -371,7 +371,7 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
   }, []);
 
   /** Submit an answer for the current question. */
-  const handleSubmitAnswer = useCallback((answer: number) => {
+  const handleSubmitAnswer = useCallback((answer: number | number[]) => {
     const conn = connRef.current;
     if (!conn || !conn.open) return;
 

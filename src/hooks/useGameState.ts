@@ -137,7 +137,10 @@ export function useGameState(): UseGameStateReturn {
 
   const getCorrectAnswerIndex = useCallback((): number | null => {
     if (!state.quiz || state.currentQuestionIndex >= state.quiz.questions.length) return null;
-    return state.quiz.questions[state.currentQuestionIndex].correctIndex;
+    const question = state.quiz.questions[state.currentQuestionIndex];
+    // multi_choice uses correctIndices (array) — return null for single-answer accessor
+    if (question.type === 'multi_choice') return null;
+    return question.correctIndex;
   }, [state.quiz, state.currentQuestionIndex]);
 
   const initGame = useCallback(

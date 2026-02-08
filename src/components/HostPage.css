@@ -516,6 +516,70 @@
   opacity: 0.5;
 }
 
+/* ── Host Multi-choice Options List ── */
+
+.host-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.host-option-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border: 3px solid transparent;
+  background-color: var(--color-bg-card);
+  font-weight: 600;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.host-option-item--multi-choice {
+  border-color: var(--color-border);
+}
+
+.host-option-item--correct {
+  border-color: var(--color-success-darker);
+  background-color: var(--color-success-bg);
+  box-shadow: 0 0 0 2px var(--color-success), 0 2px 8px rgba(134, 239, 172, 0.3);
+}
+
+.host-option-item--incorrect {
+  opacity: 0.5;
+  border-color: var(--color-border);
+}
+
+.option-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1rem;
+  opacity: 0.7;
+  min-width: 1.25rem;
+  flex-shrink: 0;
+}
+
+.host-option-item--correct .option-label {
+  opacity: 1;
+  color: var(--color-success-darker);
+}
+
+.option-text {
+  flex: 1;
+  word-break: break-word;
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.option-check {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-success-darker);
+  flex-shrink: 0;
+}
+
 /* Answer distribution */
 .answer-distribution {
   display: flex;
@@ -734,6 +798,33 @@
   font-size: 0.8rem;
   color: var(--color-text-secondary);
   white-space: nowrap;
+}
+
+/* Multi-choice answer summary details */
+.answer-summary-mc-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  font-size: 0.8rem;
+  margin: 0 0.5rem;
+}
+
+.answer-summary-mc-row {
+  display: flex;
+  gap: 0.375rem;
+  align-items: baseline;
+}
+
+.answer-summary-label {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.answer-summary-values {
+  color: var(--color-text-body);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
 }
 
 /* Host Anonymous Standings (toggle on answer_summary screen) */
@@ -975,6 +1066,16 @@
     grid-row: 2;
     align-self: center;
     margin: 1rem 0;
+  }
+
+  /* Right panel: multi-choice options list */
+  .host-game-container:has(.question-header-bar) .host-options-list {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    margin: 1rem 0;
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
   }
 
   .host-game-container:has(.question-header-bar) .host-option {
