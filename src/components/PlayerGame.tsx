@@ -391,8 +391,8 @@ function PlayerGame() {
                             checked={isChecked}
                             onChange={() => handleMultiChoiceToggle(idx)}
                           />
-                          <span className="multi-choice-letter">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
-                          <span className="multi-choice-text">{option}</span>
+                          <span className="multi-choice-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
+                          {isChecked && <span className="multi-choice-check-badge">{'\u2713'}</span>}
                         </label>
                       );
                     })}
@@ -419,11 +419,7 @@ function PlayerGame() {
             {/* ── MC / TF option buttons ── */}
             {!isSlider && !isMultiChoice && (
               <div className={`answer-grid${isTrueFalse ? ' answer-grid--two' : ''}`}>
-                {currentQuestion.options.slice(0, isTrueFalse ? 2 : 4).map((option, idx) => {
-                  // Defensive: hardcode True/False labels for backward compat with old quiz JSON
-                  const displayText = isTrueFalse
-                    ? (idx === 0 ? 'False' : 'True')
-                    : option;
+                {currentQuestion.options.slice(0, isTrueFalse ? 2 : 4).map((_option, idx) => {
                   const isExpired = timerExpiredRef.current;
                   let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
                   if (selectedAnswer === idx) btnClass += ' answer-btn--selected';
@@ -438,8 +434,7 @@ function PlayerGame() {
                       onClick={() => handleAnswerClick(idx)}
                       disabled={selectedAnswer !== null || isExpired}
                     >
-                      <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
-                      {displayText}
+                      {ANSWER_LABELS[idx]}
                     </button>
                   );
                 })}
@@ -472,11 +467,7 @@ function PlayerGame() {
               const revealCount = revealData.questionType === 'true_false' ? 2 : 4;
               return (
                 <div className={`answer-grid answer-grid--reveal${revealData.questionType === 'true_false' ? ' answer-grid--two' : ''}`}>
-                  {currentQuestion.options.slice(0, revealCount).map((option, idx) => {
-                    // Defensive: hardcode True/False labels for backward compat with old quiz JSON
-                    const displayText = revealData.questionType === 'true_false'
-                      ? (idx === 0 ? 'False' : 'True')
-                      : option;
+                  {currentQuestion.options.slice(0, revealCount).map((_option, idx) => {
                     let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
                     const isCorrectAnswer = idx === revealData.correctAnswer;
                     const isPlayerAnswer = idx === revealData.yourAnswer;
@@ -496,8 +487,7 @@ function PlayerGame() {
                         className={btnClass}
                         disabled
                       >
-                        <span className="answer-btn-label">{ANSWER_LABELS[idx]}</span>
-                        {displayText}
+                        {ANSWER_LABELS[idx]}
                       </button>
                     );
                   })}
@@ -527,8 +517,7 @@ function PlayerGame() {
 
                     return (
                       <div key={`mc-reveal-${ANSWER_LABELS[idx] ?? idx}`} className={optionClass}>
-                        <span className="reveal-option-letter">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
-                        <span className="reveal-option-text">{option}</span>
+                        <span className="reveal-option-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
                         {isCorrect && <span className="reveal-badge">{'\u2713'}</span>}
                         {!isCorrect && isSelected && <span className="reveal-badge reveal-badge--wrong">{'\u2717'}</span>}
                       </div>

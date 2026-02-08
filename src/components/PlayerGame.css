@@ -344,16 +344,25 @@
 }
 
 .multi-choice-letter {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.1rem;
-  opacity: 0.6;
-  min-width: 1.25rem;
+  font-size: 1rem;
+  opacity: 0.8;
+  min-width: 32px;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .multi-choice-label--checked .multi-choice-letter {
   opacity: 1;
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 .multi-choice-text {
@@ -405,11 +414,19 @@
 }
 
 .reveal-option-letter {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.1rem;
-  min-width: 1.25rem;
+  font-size: 1rem;
+  min-width: 32px;
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .reveal-option-text {
@@ -506,9 +523,25 @@
 .answer-btn-label {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   margin-bottom: 0.25rem;
-  opacity: 0.7;
+  opacity: 0.8;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* Label text colors match the option text color */
+.answer-btn--red .answer-btn-label {
+  color: var(--color-answer-red-text);
+}
+.answer-btn--blue .answer-btn-label {
+  color: var(--color-answer-blue-text);
+}
+.answer-btn--yellow .answer-btn-label {
+  color: var(--color-answer-yellow-text);
+}
+.answer-btn--green .answer-btn-label {
+  color: var(--color-answer-green-text);
 }
 
 .answer-btn--selected {
@@ -532,6 +565,141 @@
   box-shadow: 0 0 0 3px var(--color-error);
   opacity: 0.8;
 }
+
+/* ── Image Answer Options — REMOVED from player ──
+ * Image options are host-only (base64 too large for PeerJS).
+ * Players see text-only answer buttons. Styles kept commented
+ * for reference in case image support is re-added later.
+ */
+
+/*
+.answer-grid--images {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.answer-btn--image {
+  padding: 0.5rem;
+  min-height: 120px;
+  overflow: hidden;
+}
+
+.answer-btn--image .answer-btn-label {
+  margin-bottom: 0.25rem;
+  flex-shrink: 0;
+}
+
+.answer-btn-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  pointer-events: none;
+  flex-shrink: 1;
+  min-height: 0;
+}
+
+.answer-btn--image.answer-btn--selected {
+  border-color: var(--color-text-dark);
+  box-shadow: 0 0 0 3px rgba(88, 28, 135, 0.4);
+}
+
+.answer-grid--multi-choice-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.multi-choice-label--image {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem;
+  min-height: 100px;
+  position: relative;
+}
+
+.multi-choice-label--image .multi-choice-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+}
+
+.multi-choice-label--image .multi-choice-letter {
+  font-size: 1rem;
+}
+
+.multi-choice-image {
+  display: block;
+  max-width: 100%;
+  max-height: 90px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  pointer-events: none;
+}
+
+.multi-choice-check-badge {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary-dark);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.answer-grid--multi-choice-images .multi-choice-submit {
+  grid-column: 1 / -1;
+}
+
+.answer-grid--multi-choice-images .multi-choice-submitted {
+  grid-column: 1 / -1;
+}
+
+.reveal-option--image {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0.5rem;
+  min-height: 100px;
+  position: relative;
+}
+
+.reveal-option--image .reveal-option-letter {
+  margin-bottom: 0.25rem;
+}
+
+.reveal-option-image {
+  display: block;
+  max-width: 100%;
+  max-height: 90px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  pointer-events: none;
+}
+
+.reveal-option--image .reveal-badge {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  font-size: 1.1rem;
+}
+*/
 
 /* Submitted state */
 .submitted-screen {
@@ -742,6 +910,10 @@
   .answer-btn {
     min-height: 100px;
     font-size: 0.95rem;
+  }
+
+  .answer-btn .answer-btn-label {
+    font-size: 1rem;
   }
 
   .player-question-text {
