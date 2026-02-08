@@ -1,0 +1,55 @@
+{
+  "title": "General Knowledge Quiz",
+  "questions": [
+    {
+      "text": "During the process of photosynthesis, which takes place primarily in the chloroplasts of plant cells, light energy is converted into chemical energy that is stored in glucose molecules — but which specific pigment, found in the thylakoid membranes, is primarily responsible for absorbing the light energy that drives this complex multi-step biochemical process?",
+      "options": [
+        "Chlorophyll, the primary green pigment found in the thylakoid membranes of chloroplasts that absorbs light energy",
+        "Carotenoid pigments found in root cells",
+        "Melanin, the pigment responsible for skin color",
+        "Hemoglobin, the oxygen-carrying molecule in blood"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "text": "What is the capital of Australia?",
+      "options": [
+        "Sydney",
+        "Melbourne",
+        "Canberra",
+        "Perth"
+      ],
+      "correctIndex": 2
+    },
+    {
+      "text": "What is the chemical symbol for the element gold on the periodic table?",
+      "options": [
+        "Go",
+        "Au",
+        "Gd",
+        "Ag"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "text": "How many planets are in our solar system?",
+      "options": [
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "text": "The Great Wall of China, one of the most impressive architectural feats in human history, was built over many centuries by several dynasties — approximately how long is the entire wall including all of its branches and secondary sections?",
+      "options": [
+        "About 1,500 miles in total length",
+        "Roughly 5,500 miles from end to end",
+        "Over 13,000 miles when including all branches",
+        "Approximately 800 miles along the main route"
+      ],
+      "correctIndex": 2
+    }
+  ]
+}
