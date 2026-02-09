@@ -65,6 +65,7 @@ function PlayerGame() {
   const isSlider = questionType === 'slider';
   const isTrueFalse = questionType === 'true_false';
   const isMultiChoice = questionType === 'multi_choice';
+  const hasImageOptions = Array.isArray(currentQuestion?.imageOptions) && currentQuestion.imageOptions.length > 0;
 
   // Send get_state message when connection opens so the host sends us the current game state
   useEffect(() => {
@@ -119,6 +120,8 @@ function PlayerGame() {
           questionType: msg.questionType,
           sliderMin: qSliderMin,
           sliderMax: qSliderMax,
+          image: msg.image,
+          imageOptions: msg.imageOptions,
         });
         setSelectedAnswer(null);
         setSelectedAnswers(new Set());
@@ -302,6 +305,11 @@ function PlayerGame() {
         {phase === 'answering' && currentQuestion && (
           <div className="player-question-section">
             <div className="player-question-header">
+              {currentQuestion.image && (
+                <div className="player-question-image">
+                  <img src={currentQuestion.image} alt="Question" />
+                </div>
+              )}
               <div className="player-question-counter">
                 Question {currentQuestion.index + 1} of {currentQuestion.total}
               </div>
@@ -375,15 +383,22 @@ function PlayerGame() {
 
             {/* ── Multi-choice checkbox options ── */}
             {isMultiChoice && (
-              <div className="answer-grid answer-grid--multi-choice">
+              <div className={`answer-grid answer-grid--multi-choice${hasImageOptions ? ' answer-grid--multi-choice-images' : ''}`}>
                 {selectedAnswer === null && !timerExpiredRef.current ? (
                   <>
                     {currentQuestion.options.map((option, idx) => {
                       const isChecked = selectedAnswers.has(idx);
+                      const imageUrl = hasImageOptions ? (currentQuestion.imageOptions ?? [])[idx] : undefined;
                       return (
                         <label
                           key={`mc-${ANSWER_LABELS[idx] ?? idx}`}
-                          className={`multi-choice-label${isChecked ? ' multi-choice-label--checked' : ''}`}
+                          className={`multi-choice-label${isChecked ? ' multi-choice-label--checked' : ''}${imageUrl ? ' multi-choice-label--image' : ''}`}
+                          style={imageUrl ? {
+                            backgroundImage: `url(${imageUrl})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center center',
+                            backgroundRepeat: 'no-repeat',
+                          } : undefined}
                         >
                           <input
                             type="checkbox"
@@ -391,7 +406,12 @@ function PlayerGame() {
                             checked={isChecked}
                             onChange={() => handleMultiChoiceToggle(idx)}
                           />
-                          <span className="multi-choice-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
+                          {!imageUrl && (
+                            <span className="multi-choice-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
+                          )}
+                          {imageUrl && (
+                            <span className="multi-choice-label--image-letter">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
+                          )}
                           {isChecked && <span className="multi-choice-check-badge">{'\u2713'}</span>}
                         </label>
                       );
@@ -418,10 +438,12 @@ function PlayerGame() {
 
             {/* ── MC / TF option buttons ── */}
             {!isSlider && !isMultiChoice && (
-              <div className={`answer-grid${isTrueFalse ? ' answer-grid--two' : ''}`}>
+              <div className={`answer-grid${isTrueFalse ? ' answer-grid--two' : ''}${hasImageOptions && !isTrueFalse ? ' answer-grid--images' : ''}`}>
                 {currentQuestion.options.slice(0, isTrueFalse ? 2 : 4).map((_option, idx) => {
                   const isExpired = timerExpiredRef.current;
+                  const imageUrl = !isTrueFalse && hasImageOptions ? (currentQuestion.imageOptions ?? [])[idx] : undefined;
                   let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
+                  if (imageUrl) btnClass += ' answer-btn--image';
                   if (selectedAnswer === idx) btnClass += ' answer-btn--selected';
                   if (selectedAnswer !== null && selectedAnswer !== idx) btnClass += ' answer-btn--disabled-other';
                   if (isExpired && selectedAnswer === null) btnClass += ' answer-btn--disabled-other';
@@ -433,8 +455,15 @@ function PlayerGame() {
                       className={btnClass}
                       onClick={() => handleAnswerClick(idx)}
                       disabled={selectedAnswer !== null || isExpired}
+                      style={imageUrl ? {
+                        backgroundImage: `url(${imageUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center center',
+                        backgroundRepeat: 'no-repeat',
+                      } : undefined}
                     >
-                      {ANSWER_LABELS[idx]}
+                      <span className={`answer-btn-label${imageUrl ? ' answer-btn-label--badge' : ''}`}>{ANSWER_LABELS[idx]}</span>
+                      {!imageUrl && <span className="answer-btn-text">{_option}</span>}
                     </button>
                   );
                 })}
@@ -456,6 +485,11 @@ function PlayerGame() {
         {phase === 'reveal' && currentQuestion && revealData && (
           <div className="player-question-section">
             <div className="player-question-header">
+              {currentQuestion.image && (
+                <div className="player-question-image">
+                  <img src={currentQuestion.image} alt="Question" />
+                </div>
+              )}
               <div className="player-question-counter">
                 Question {currentQuestion.index + 1} of {currentQuestion.total}
               </div>
@@ -465,10 +499,13 @@ function PlayerGame() {
             {/* MC / TF reveal: show option grid with correct/incorrect highlighting */}
             {(revealData.questionType === 'multiple_choice' || revealData.questionType === 'true_false') && (() => {
               const revealCount = revealData.questionType === 'true_false' ? 2 : 4;
+              const revealHasImages = revealData.questionType !== 'true_false' && hasImageOptions;
               return (
-                <div className={`answer-grid answer-grid--reveal${revealData.questionType === 'true_false' ? ' answer-grid--two' : ''}`}>
+                <div className={`answer-grid answer-grid--reveal${revealData.questionType === 'true_false' ? ' answer-grid--two' : ''}${revealHasImages ? ' answer-grid--images' : ''}`}>
                   {currentQuestion.options.slice(0, revealCount).map((_option, idx) => {
+                    const imageUrl = revealHasImages ? (currentQuestion.imageOptions ?? [])[idx] : undefined;
                     let btnClass = `answer-btn ${ANSWER_COLORS[idx]}`;
+                    if (imageUrl) btnClass += ' answer-btn--image';
                     const isCorrectAnswer = idx === revealData.correctAnswer;
                     const isPlayerAnswer = idx === revealData.yourAnswer;
 
@@ -486,8 +523,15 @@ function PlayerGame() {
                         type="button"
                         className={btnClass}
                         disabled
+                        style={imageUrl ? {
+                          backgroundImage: `url(${imageUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center center',
+                          backgroundRepeat: 'no-repeat',
+                        } : undefined}
                       >
-                        {ANSWER_LABELS[idx]}
+                        <span className={`answer-btn-label${imageUrl ? ' answer-btn-label--badge' : ''}`}>{ANSWER_LABELS[idx]}</span>
+                        {!imageUrl && <span className="answer-btn-text">{_option}</span>}
                       </button>
                     );
                   })}
@@ -499,12 +543,15 @@ function PlayerGame() {
             {revealData.questionType === 'multi_choice' && (() => {
               const correctSet = new Set(revealData.correctAnswers ?? []);
               const playerSet = new Set(revealData.yourAnswers ?? []);
+              const revealHasImages = hasImageOptions;
               return (
-                <div className="answer-grid answer-grid--reveal answer-grid--multi-choice">
+                <div className={`answer-grid answer-grid--reveal answer-grid--multi-choice${revealHasImages ? ' answer-grid--multi-choice-images' : ''}`}>
                   {currentQuestion.options.map((option, idx) => {
                     const isCorrect = correctSet.has(idx);
                     const isSelected = playerSet.has(idx);
+                    const imageUrl = revealHasImages ? (currentQuestion.imageOptions ?? [])[idx] : undefined;
                     let optionClass = 'reveal-option';
+                    if (imageUrl) optionClass += ' reveal-option--image';
                     if (isCorrect && isSelected) {
                       optionClass += ' reveal-option--correct-selected';
                     } else if (isCorrect && !isSelected) {
@@ -516,8 +563,22 @@ function PlayerGame() {
                     }
 
                     return (
-                      <div key={`mc-reveal-${ANSWER_LABELS[idx] ?? idx}`} className={optionClass}>
-                        <span className="reveal-option-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
+                      <div
+                        key={`mc-reveal-${ANSWER_LABELS[idx] ?? idx}`}
+                        className={optionClass}
+                        style={imageUrl ? {
+                          backgroundImage: `url(${imageUrl})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center center',
+                          backgroundRepeat: 'no-repeat',
+                        } : undefined}
+                      >
+                        {!imageUrl && (
+                          <span className="reveal-option-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
+                        )}
+                        {imageUrl && (
+                          <span className="reveal-option-letter--badge">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
+                        )}
                         {isCorrect && <span className="reveal-badge">{'\u2713'}</span>}
                         {!isCorrect && isSelected && <span className="reveal-badge reveal-badge--wrong">{'\u2717'}</span>}
                       </div>

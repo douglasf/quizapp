@@ -389,6 +389,8 @@ function HostPage() {
             questionType,
             sliderMin: question.sliderMin ?? 0,
             sliderMax: question.sliderMax ?? 100,
+            image: question.image,
+            imageOptions: question.imageOptions,
           });
         }, 200);
       }
@@ -419,6 +421,8 @@ function HostPage() {
             questionType,
             sliderMin: question.sliderMin ?? 0,
             sliderMax: question.sliderMax ?? 100,
+            image: question.image,
+            imageOptions: question.imageOptions,
           });
         }, 200);
       }
@@ -506,6 +510,8 @@ function HostPage() {
         questionType,
         sliderMin: question.sliderMin ?? 0,
         sliderMax: question.sliderMax ?? 100,
+        image: question.image,
+        imageOptions: question.imageOptions,
       });
     }
   }, [connectedCount, quiz, startQuiz, broadcast]);
@@ -710,6 +716,8 @@ function HostPage() {
         questionType,
         sliderMin: nextQ.sliderMin ?? 0,
         sliderMax: nextQ.sliderMax ?? 100,
+        image: nextQ.image,
+        imageOptions: nextQ.imageOptions,
       });
     }
   }, [nextQuestion, state.currentQuestionIndex, quiz, broadcast, totalQuestions]);
