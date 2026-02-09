@@ -1,4 +1,5 @@
 import type { PlayerStanding } from '../types/game';
+import Avatar from './Avatar';
 import './Scoreboard.css';
 
 interface ScoreboardProps {
@@ -38,6 +39,7 @@ function Scoreboard({ standings, currentPlayerName, showPodium = false, title, a
           {podiumOrder.map((player, idx) => (
             <div key={anonymous ? `anon-${idx}` : player.name} className="podium-place">
               <span className="podium-badge">{podiumBadges[player.rank] || ''}</span>
+              {!anonymous && player.avatar && <Avatar emoji={player.avatar.emoji} color={player.avatar.color} size="lg" />}
               {!anonymous && <span className="podium-name">{player.name}</span>}
               <span className="podium-score">{player.score} pts</span>
               <div className="podium-bar" />
@@ -57,6 +59,7 @@ function Scoreboard({ standings, currentPlayerName, showPodium = false, title, a
                 className={`standings-item${isCurrentPlayer ? ' standings-item--highlight' : ''}`}
               >
                 <span className="standings-rank">#{player.rank}</span>
+                {!anonymous && player.avatar && <Avatar emoji={player.avatar.emoji} color={player.avatar.color} size="sm" />}
                 {!anonymous && <span className="standings-name">{player.name}</span>}
                 <span className="standings-score">{player.score} pts</span>
               </li>

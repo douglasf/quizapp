@@ -70,6 +70,7 @@ export function useHost(
     const list = Array.from(playersRef.current.values()).map((p) => ({
       name: p.name,
       connected: p.connected,
+      avatar: p.avatar,
     }));
     return { type: 'player_list' as const, players: list };
   }, []);
@@ -200,6 +201,7 @@ export function useHost(
               const newPlayer: Player = {
                 peerId: conn.peer,
                 name: trimmedName,
+                avatar: msg.avatar,
                 score: 0,
                 connected: true,
                 answeredQuestions: new Set(),
@@ -240,6 +242,7 @@ export function useHost(
                 const newPlayer: Player = {
                   peerId: conn.peer,
                   name: trimmedName,
+                  avatar: msg.avatar,
                   score: 0,
                   connected: true,
                   answeredQuestions: new Set(),
@@ -270,6 +273,7 @@ export function useHost(
               connectionsRef.current.delete(existing.peerId);
               existing.peerId = conn.peer;
               existing.connected = true;
+              if (msg.avatar) existing.avatar = msg.avatar;
               connectionsRef.current.set(conn.peer, conn);
               syncPlayersState();
 

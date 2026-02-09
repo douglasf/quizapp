@@ -8,6 +8,7 @@ import { useFullscreen } from '../hooks/useFullscreen';
 import { useFitText } from '../hooks/useFitText';
 import * as peerManager from '../utils/peerManager';
 import { calculateScore, isAnswerCorrect } from '../utils/scoring';
+import Avatar from './Avatar';
 import Scoreboard from './Scoreboard';
 import type { Quiz, QuestionType } from '../types/quiz';
 import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz';
@@ -533,6 +534,7 @@ function HostPage() {
         name: player.name,
         score: player.score,
         rank: i + 1,
+        avatar: player.avatar,
       }));
   }, [players]);
 
@@ -619,6 +621,7 @@ function HostPage() {
       // Track results for answer summary
       revealResults.push({
         name: player.name,
+        avatar: player.avatar,
         correct,
         scoreGained,
         ...(isMultiChoiceQ && {
@@ -867,6 +870,7 @@ function HostPage() {
                     key={player.name}
                     className={`player-chip${player.connected ? '' : ' player-chip--disconnected'}`}
                   >
+                    {player.avatar && <Avatar emoji={player.avatar.emoji} color={player.avatar.color} size="sm" />}
                     <span
                       className={`player-status-dot ${
                         player.connected ? 'player-status-dot--connected' : 'player-status-dot--disconnected'
@@ -964,6 +968,7 @@ function HostPage() {
                     ) : (
                       <span className="answer-summary-result">{result.correct ? '\u2713' : '\u2717'}</span>
                     )}
+                    {result.avatar && <Avatar emoji={result.avatar.emoji} color={result.avatar.color} size="sm" />}
                     <span className="answer-summary-name">{result.name}</span>
                     {isMultiChoiceSummary && (
                       <span className="answer-summary-mc-details">

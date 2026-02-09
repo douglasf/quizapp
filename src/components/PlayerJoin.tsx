@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePlayer } from '../hooks/usePlayer';
+import AvatarPicker from './AvatarPicker';
+import { randomEmoji, randomColor } from '../constants/avatars';
 import './PlayerJoin.css';
 
 function PlayerJoin() {
@@ -9,6 +11,8 @@ function PlayerJoin() {
 
   const [gameCode, setGameCode] = useState(urlGameCode?.toUpperCase() ?? '');
   const [playerName, setPlayerName] = useState('');
+  const [avatarEmoji, setAvatarEmoji] = useState(() => randomEmoji());
+  const [avatarColor, setAvatarColor] = useState(() => randomColor());
   // Only connect when we have a valid 4-char game code — set on explicit button click
   const [activeGameCode, setActiveGameCode] = useState('');
 
@@ -35,11 +39,12 @@ function PlayerJoin() {
         sessionStorage.setItem('quizapp_player_data', JSON.stringify({
           gameCode: activeGameCode,
           playerName: msg.playerName,
+          avatar: { emoji: avatarEmoji, color: avatarColor },
         }));
         navigate('/play');
       }
     });
-  }, [onMessage, activeGameCode, navigate]);
+  }, [onMessage, activeGameCode, navigate, avatarEmoji, avatarColor]);
 
   // Prevent Enter key from submitting the form — only allow explicit button click
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -65,9 +70,9 @@ function PlayerJoin() {
 
     // Already connected to this game code — send join immediately
     if (connectionStatus === 'connected') {
-      handleJoin(playerName);
+      handleJoin(playerName, { emoji: avatarEmoji, color: avatarColor });
     }
-  }, [gameCode, playerName, handleJoin, activeGameCode, connectionStatus]);
+  }, [gameCode, playerName, handleJoin, activeGameCode, connectionStatus, avatarEmoji, avatarColor]);
 
   // When the connection to the host is established after a button-click-triggered
   // activeGameCode change, send the join message exactly once.
@@ -81,11 +86,11 @@ function PlayerJoin() {
       pendingJoinRef.current = false;
       // Small delay to ensure the PeerJS data channel is fully ready
       const timeout = setTimeout(() => {
-        handleJoin(pendingNameRef.current);
+        handleJoin(pendingNameRef.current, { emoji: avatarEmoji, color: avatarColor });
       }, 300);
       return () => clearTimeout(timeout);
     }
-  }, [activeGameCode, connectionStatus, confirmedName, handleJoin]);
+  }, [activeGameCode, connectionStatus, confirmedName, handleJoin, avatarEmoji, avatarColor]);
 
   const handleGameCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     // Allow only alphanumeric, max 4 chars
@@ -144,6 +149,15 @@ function PlayerJoin() {
               maxLength={20}
               autoComplete="off"
               disabled={isLoading}
+            />
+          </div>
+
+          <div className="form-group">
+            <AvatarPicker
+              emoji={avatarEmoji}
+              color={avatarColor}
+              onEmojiChange={setAvatarEmoji}
+              onColorChange={setAvatarColor}
             />
           </div>
 

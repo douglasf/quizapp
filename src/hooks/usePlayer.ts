@@ -5,6 +5,7 @@ import type Peer from 'peerjs';
 import type { DataConnection } from 'peerjs';
 import { createPlayerPeer } from '../utils/peer';
 import type { HostMessage, PlayerMessage } from '../types/messages';
+import type { PlayerAvatar } from '../types/game';
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_INTERVAL_MS = 5_000;
@@ -13,8 +14,8 @@ export interface UsePlayerReturn {
   connectionStatus: 'disconnected' | 'connected' | 'reconnecting' | 'failed';
   reconnectAttempts: number;
   playerName: string | null;
-  handleJoin: (name: string) => void;
-  handleRejoin: (name: string) => void;
+  handleJoin: (name: string, avatar?: PlayerAvatar) => void;
+  handleRejoin: (name: string, avatar?: PlayerAvatar) => void;
   handleGetState: (name: string) => void;
   handleSubmitAnswer: (answer: number | number[]) => void;
   onMessage: (handler: (msg: HostMessage) => void) => void;
@@ -51,6 +52,9 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
 
   // Stash playerName in a ref so reconnection callbacks can access it
   const playerNameRef = useRef<string | null>(null);
+
+  // Stash avatar in a ref so reconnection callbacks can include it
+  const avatarRef = useRef<PlayerAvatar | undefined>(undefined);
 
   // Current question index ref (for answer submission)
   const currentQuestionIndexRef = useRef<number>(0);
@@ -225,7 +229,7 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
           // Send rejoin (NOT join)
           const name = playerNameRef.current;
           if (!name) return;
-          const rejoinMsg: PlayerMessage = { type: 'rejoin', name };
+          const rejoinMsg: PlayerMessage = { type: 'rejoin', name, avatar: avatarRef.current };
           conn.send(rejoinMsg);
         });
 
@@ -311,7 +315,7 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
   // ---------- actions ----------
 
   /** Send a `join` message to the host with the given player name. */
-  const handleJoin = useCallback((name: string) => {
+  const handleJoin = useCallback((name: string, avatar?: PlayerAvatar) => {
     const trimmed = name.trim();
     if (!trimmed) {
       setErrorMessage('Name cannot be empty');
@@ -328,8 +332,11 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
       return;
     }
 
-    const joinMsg: PlayerMessage = { type: 'join', name: trimmed };
+    const joinMsg: PlayerMessage = { type: 'join', name: trimmed, avatar };
     conn.send(joinMsg);
+
+    // Stash avatar for reconnection logic
+    avatarRef.current = avatar;
   }, []);
 
   /**
@@ -337,18 +344,19 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
    * Used when navigating between pages creates a new peer connection
    * that the host doesn't recognize as the same player.
    */
-  const handleRejoin = useCallback((name: string) => {
+  const handleRejoin = useCallback((name: string, avatar?: PlayerAvatar) => {
     const trimmed = name.trim();
     if (!trimmed) return;
 
     const conn = connRef.current;
     if (!conn || !conn.open) return;
 
-    const rejoinMsg: PlayerMessage = { type: 'rejoin', name: trimmed };
+    const rejoinMsg: PlayerMessage = { type: 'rejoin', name: trimmed, avatar };
     conn.send(rejoinMsg);
 
-    // Also update local refs so reconnection logic can use the name
+    // Also update local refs so reconnection logic can use the name and avatar
     playerNameRef.current = trimmed;
+    avatarRef.current = avatar;
   }, []);
 
   /**

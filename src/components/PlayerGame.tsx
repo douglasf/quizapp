@@ -31,7 +31,7 @@ function PlayerGame() {
     const stored = sessionStorage.getItem('quizapp_player_data');
     if (!stored) return null;
     try {
-      return JSON.parse(stored) as { gameCode: string; playerName: string };
+      return JSON.parse(stored) as { gameCode: string; playerName: string; avatar?: { emoji: string; color: string } };
     } catch {
       return null;
     }
