@@ -1,8 +1,8 @@
 export const AVATAR_EMOJIS = [
-  'fox', 'cat', 'dog', 'frog', 'lion', 'panda',
-  'unicorn', 'octopus', 'butterfly', 'bee', 'parrot', 'turtle',
-  'gamepad', 'guitar', 'rocket', 'lightning', 'rainbow', 'fire',
-  'gem', 'target', 'trophy', 'star', 'pizza', 'flower',
+  '🦊', '🐱', '🐶', '🐸', '🦁', '🐼',
+  '🦄', '🐙', '🦋', '🐝', '🦜', '🐢',
+  '🎮', '🎸', '🚀', '⚡', '🌈', '🔥',
+  '💎', '🎯', '🏆', '⭐', '🍕', '🌸',
 ];
 
 export const AVATAR_COLORS = [
