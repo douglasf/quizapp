@@ -2,9 +2,15 @@ import type { QuestionType } from './quiz';
 
 // Game state and player structures
 
+export interface PlayerAvatar {
+  emoji: string;
+  color: string;
+}
+
 export interface Player {
   peerId: string;
   name: string;
+  avatar?: PlayerAvatar;
   score: number;
   connected: boolean;
   answeredQuestions: Set<number>;
@@ -14,6 +20,7 @@ export type GamePhase = 'lobby' | 'question' | 'answer_reveal' | 'answer_summary
 
 export interface AnswerSummaryResult {
   name: string;
+  avatar?: PlayerAvatar;
   correct: boolean;
   scoreGained: number;
   /** For slider questions: the player's numeric answer (undefined if they didn't answer) */
@@ -53,6 +60,7 @@ export interface PlayerQuestion {
 
 export interface PlayerStanding {
   name: string;
+  avatar?: PlayerAvatar;
   score: number;
   rank: number;
 }
