@@ -72,9 +72,78 @@
   gap: 0.625rem;
 }
 
+/* Link warning — large shareable URL notice */
+.link-warning {
+  background-color: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  color: var(--color-warning-text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 /* -- Import section -- */
 .import-section {
   margin-bottom: 2rem;
+}
+
+/* URL import group */
+.url-import-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-body);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: var(--color-primary-dark);
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.2);
+}
+
+.url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fetch-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Import divider — "or" text with horizontal rules */
+.import-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.import-divider hr {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--color-border);
+}
+
+.import-divider span {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: lowercase;
 }
 
 /* Error box — reuses .error-box from QuizCreator */
@@ -199,6 +268,14 @@
   }
 
   .export-actions .btn {
+    width: 100%;
+  }
+
+  .url-import-group {
+    flex-direction: column;
+  }
+
+  .fetch-btn {
     width: 100%;
   }
 }

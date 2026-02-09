@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Quiz } from '../types/quiz'
 import { validateQuiz } from '../utils/quizValidator'
+import { fetchQuizFromUrl } from '../utils/fetchQuiz'
+import { encodeQuizToFragment, decodeQuizFromFragment } from '../utils/quizLink'
+import { compressQuizImages } from '../utils/imageCompression'
 import './QuizImport.css'
 
 const CREATED_QUIZ_KEY = 'quizapp_created_quiz'
@@ -15,12 +18,22 @@ function QuizImport() {
   // Export state — quiz that was just created
   const [createdQuiz, setCreatedQuiz] = useState<Quiz | null>(null)
   const [copied, setCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [linkWarning, setLinkWarning] = useState('')
+  const [linkLoading, setLinkLoading] = useState(false)
 
   // Import state
   const [jsonText, setJsonText] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const [importSuccess, setImportSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // URL import state
+  const [urlInput, setUrlInput] = useState('')
+  const [urlLoading, setUrlLoading] = useState(false)
+
+  // Auto-import from ?quiz= parameter state
+  const [autoImportLoading, setAutoImportLoading] = useState(false)
 
   // Load created quiz from localStorage on mount
   useEffect(() => {
@@ -35,6 +48,22 @@ function QuizImport() {
       }
     }
   }, [])
+
+  // Auto-import from ?quiz= search parameter on mount
+  useEffect(() => {
+    const quizParam = searchParams.get('quiz')
+    if (!quizParam) return
+
+    setAutoImportLoading(true)
+    decodeQuizFromFragment(quizParam)
+      .then((json) => processImport(json))
+      .catch(() =>
+        setErrors(['Could not decode quiz from URL. The link may be corrupted.']),
+      )
+      .finally(() => setAutoImportLoading(false))
+    // processImport is stable (defined in component scope, no deps change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // ── Export actions ──
 
@@ -65,6 +94,43 @@ function QuizImport() {
     URL.revokeObjectURL(url)
   }
 
+  async function handleShareAsLink() {
+    if (!createdQuiz) return
+    setLinkLoading(true)
+    setLinkWarning('')
+
+    try {
+      // Re-compress all images before encoding to ensure minimal URL size
+      const compressedQuiz = await compressQuizImages(createdQuiz as unknown as Parameters<typeof compressQuizImages>[0]) as unknown as Quiz;
+      const encoded = await encodeQuizToFragment(compressedQuiz)
+      // HashRouter: routes live inside the # fragment, so the URL must be
+      // origin/base/#/import?quiz=...  (not origin/base/import?quiz=...)
+      const fullUrl = `${window.location.origin}/quizapp/#/import?quiz=${encoded}`
+
+      console.log(
+        `[ShareLink] URL length: ${fullUrl.length} chars ` +
+        `(JSON: ${JSON.stringify(compressedQuiz).length} chars)`
+      );
+
+      if (fullUrl.length > 50_000) {
+        setLinkWarning(
+          'This link is large due to images. Some browsers may not support URLs this long.',
+        )
+      } else {
+        setLinkWarning('')
+      }
+
+      await navigator.clipboard.writeText(fullUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      setErrors([`Failed to create share link: ${message}`])
+    } finally {
+      setLinkLoading(false)
+    }
+  }
+
   function handleNewQuiz() {
     localStorage.removeItem(CREATED_QUIZ_KEY)
     navigate('/create')
@@ -88,7 +154,7 @@ function QuizImport() {
 
   // ── Import actions ──
 
-  function processImport(raw: string) {
+  async function processImport(raw: string) {
     setErrors([])
     setImportSuccess(false)
 
@@ -99,6 +165,17 @@ function QuizImport() {
       const parseErr = e instanceof SyntaxError ? e.message : 'Unknown error';
       setErrors([`Invalid JSON — could not parse the input. ${parseErr}`])
       return
+    }
+
+    // Compress all images BEFORE validation so that oversized images get
+    // compressed down and pass the size checks in the validator.
+    try {
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>).questions)) {
+        parsed = await compressQuizImages(parsed as Parameters<typeof compressQuizImages>[0]);
+      }
+    } catch (err) {
+      console.warn('[QuizImport] Image compression failed, validating with original images:', err);
+      // Continue with original images — validation may reject if too large
     }
 
     const result = validateQuiz(parsed)
@@ -155,6 +232,26 @@ function QuizImport() {
     }
   }
 
+  async function handleFetchFromUrl() {
+    if (!urlInput.trim()) {
+      setErrors(['Please enter a URL to fetch a quiz from.'])
+      return
+    }
+    setUrlLoading(true)
+    setErrors([])
+    setImportSuccess(false)
+
+    const result = await fetchQuizFromUrl(urlInput)
+
+    if (result.success) {
+      processImport(result.json)
+    } else {
+      setErrors([result.error])
+    }
+
+    setUrlLoading(false)
+  }
+
   // ── Render ──
 
   const prettyJson = createdQuiz ? JSON.stringify(createdQuiz, null, 2) : ''
@@ -201,11 +298,25 @@ function QuizImport() {
               <button
                 type="button"
                 className="btn btn-secondary"
+                onClick={handleShareAsLink}
+                disabled={linkLoading}
+              >
+                {linkLoading ? 'Sharing...' : linkCopied ? 'Link Copied!' : 'Share as Link'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={handleNewQuiz}
               >
                 Create New Quiz
               </button>
             </div>
+
+            {linkWarning && (
+              <div className="link-warning" role="alert">
+                {linkWarning}
+              </div>
+            )}
           </section>
         )}
 
@@ -218,6 +329,13 @@ function QuizImport() {
               : <>Paste quiz JSON below or upload a <code>.json</code> file.</>
             }
           </p>
+
+          {/* Auto-import loading state */}
+          {autoImportLoading && (
+            <div className="success-box" role="status">
+              Decoding quiz from link...
+            </div>
+          )}
 
           {/* Error display */}
           {errors.length > 0 && (
@@ -237,6 +355,41 @@ function QuizImport() {
               Quiz imported successfully! Redirecting to host lobby...
             </output>
           )}
+
+          {/* URL import */}
+          <div className="form-group">
+            <label htmlFor="import-url" className="form-label">
+              Fetch from URL
+            </label>
+            <div className="url-import-group">
+              <input
+                id="import-url"
+                type="url"
+                className="form-input url-input"
+                placeholder="https://gist.githubusercontent.com/..."
+                value={urlInput}
+                onChange={(e) => {
+                  setUrlInput(e.target.value)
+                  setErrors([])
+                  setImportSuccess(false)
+                }}
+                disabled={urlLoading || importSuccess}
+              />
+              <button
+                type="button"
+                className="btn btn-primary fetch-btn"
+                onClick={handleFetchFromUrl}
+                disabled={urlLoading || importSuccess}
+              >
+                {urlLoading ? 'Fetching...' : 'Fetch Quiz'}
+              </button>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="import-divider">
+            <hr /><span>or</span><hr />
+          </div>
 
           {/* Paste JSON */}
           <div className="form-group">
