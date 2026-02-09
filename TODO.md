@@ -1,11 +1,5 @@
 # Quiz App TODO
 
-## 🔴 HIGH PRIORITY
-
-- [ ] **Swedish Translation Support** — add Swedish lang at `/quizapp/sv/`, English at `/quizapp/en/`, with flag toggle on start screen
-
----
-
 ## 🟢 COMPLETED
 
 ### Architecture & Infrastructure
@@ -13,12 +7,13 @@
 - [x] QR code bug fix (StrictMode double-mount race condition eliminated)
 - [x] Host screen layout fixes (grid overflow, timer bar symmetry)
 
-### Question Types (All 5 Types Implemented)
+### Question Types (All 6 Types Implemented)
 - [x] Multiple Choice (4 options, speed-based scoring)
 - [x] True/False (2 hardcoded options, speed-based scoring)
 - [x] Slider (configurable range, proximity + speed scoring)
 - [x] Multi-Choice (2-8 options, multiple correct answers, advanced scoring)
 - [x] Question images (base64 upload, compression, host-only display)
+- [x] Image-based answer options (visual identification questions — flags, landmarks, etc.)
 
 ### Game Mechanics
 - [x] Question timer (configurable per-question, 5-120 seconds)
@@ -33,6 +28,7 @@
 - [x] Scoreboard scaling for widescreen
 - [x] Dynamic text scaling for long questions/answers
 - [x] Example quiz with all 5 question types
+- [x] PWA support with manifest.json and iOS standalone mode
 
 ### Code Cleanup
 - [x] Remove 8 dead component files
@@ -41,15 +37,7 @@
 
 ---
 
-## 📋 PENDING (Medium Priority)
-
-### Image Features
-- [ ] **Image-based answer options** — allow visual identification questions (flags, landmarks, etc.)
-  - Add `imageOptions?: string[]` field to Question interface
-  - Toggle between text and image answers in QuizCreator
-  - Render image buttons on host and player screens
-  - Reuse existing compression logic
-  - **Scope**: Medium complexity
+## 📋 PENDING (Low Priority)
 
 ### CSS Cleanup
 - [ ] **Replace `:has()` selectors with explicit CSS classes** — 13 instances
@@ -59,22 +47,14 @@
 
 ---
 
-## 🔍 FUTURE FEATURES (Low Priority Investigations)
+## 🚫 WON'T IMPLEMENT (Intentionally Deprioritized)
 
-### Alternative Answer Types
-- [ ] **Free-text answers** with fuzzy matching
-  - Word tokenization + Levenshtein distance matching
-  - Spelling tolerance configuration
-  - Partial credit support
-  - **Complexity**: Medium-High
-  - **Dependencies**: New npm package (fuse.js or string-similarity)
+> These features were considered but intentionally deprioritized. The current
+> question types and setup sufficiently cover the app's use cases.
 
-### Question Format Variations
-- [ ] **Flexible option counts** for multiple choice questions
-  - Allow 3-12 options instead of fixed 4
-  - Dynamic grid layout scaling
-  - **Complexity**: Medium
-  - **Risks**: Type system changes, UI complexity
+- ~~**Swedish Translation Support**~~ — Demoted: daughter prefers English UI
+- ~~**Free-text answers with fuzzy matching**~~ — Demoted: current question types cover all needs
+- ~~**Flexible option counts for multiple choice**~~ — Demoted: multi-choice (2-8 options) already provides sufficient flexibility
 
 ---
 
