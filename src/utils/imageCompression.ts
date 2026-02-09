@@ -1,8 +1,9 @@
 /**
- * Aggressive image compression utilities using canvas resizing.
+ * Image compression utilities using canvas resizing.
  *
- * Goal: reduce image sizes dramatically so quiz data fits in shareable URLs.
- * All images are re-encoded as JPEG at low quality with aggressive downscaling.
+ * Goal: reduce image sizes so quiz data fits in shareable URLs while
+ * preserving reasonable visual quality.
+ * Images are re-encoded as JPEG/WebP at moderate quality with downscaling.
  *
  * HTTPS URL images (e.g. from R2/CDN hosting) are always skipped — they are
  * already optimised on the server and don't need client-side recompression.
@@ -18,11 +19,11 @@ export function isHttpsUrl(value: string): boolean {
 }
 
 export interface CompressImageOptions {
-  /** Maximum width in pixels (default: 400) */
+  /** Maximum width in pixels (default: 800) */
   maxWidth?: number;
-  /** Maximum height in pixels (default: 400) */
+  /** Maximum height in pixels (default: 800) */
   maxHeight?: number;
-  /** JPEG quality 0-1 (default: 0.3 — aggressive) */
+  /** JPEG quality 0-1 (default: 0.85 — balanced) */
   quality?: number;
 }
 
@@ -35,9 +36,9 @@ export const COMPRESS_THRESHOLD = 5 * 1024; // 5 KB
 /**
  * Compress a base64-encoded image using canvas resizing.
  *
- * ALL images are aggressively compressed:
- * - Downscaled to fit within maxWidth×maxHeight (default 400×400)
- * - Re-encoded as JPEG at low quality (default 0.3 = 30%)
+ * Images are compressed with balanced quality settings:
+ * - Downscaled to fit within maxWidth×maxHeight (default 800×800)
+ * - Re-encoded as JPEG at moderate quality (default 0.85 = 85%)
  * - Compared against WebP — whichever is smaller wins
  *
  * Logs compression results to console for debugging/measurement.
@@ -47,9 +48,9 @@ export function compressImage(
   options: CompressImageOptions = {},
 ): Promise<string> {
   const {
-    maxWidth = 400,
-    maxHeight = 400,
-    quality = 0.3,
+    maxWidth = 800,
+    maxHeight = 800,
+    quality = 0.85,
   } = options;
 
   return new Promise((resolve, reject) => {
@@ -162,9 +163,9 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Convenience wrapper: read a File and compress it aggressively.
+ * Convenience wrapper: read a File and compress it.
  *
- * Question images: 400×400 max, quality 0.3 (30%).
+ * Question images: 800×800 max, quality 0.85 (85%).
  * ALL files are compressed — the threshold is very low (5 KB).
  */
 export async function compressImageFile(
@@ -183,17 +184,18 @@ export async function compressImageFile(
 }
 
 /**
- * Convenience function for answer option images — even more aggressive
- * compression with smaller dimensions (200×200, quality 0.25).
+ * Convenience function for answer option images — moderate compression
+ * with smaller dimensions (400×400, quality 0.80).
  *
  * Answer images are typically flags, icons, or logos where fine detail
- * is less important than being recognizable.
+ * is less important than being recognizable, but quality should still
+ * be good enough for clarity.
  */
 export function compressAnswerImage(imageData: string): Promise<string> {
   return compressImage(imageData, {
-    maxWidth: 200,
-    maxHeight: 200,
-    quality: 0.25,
+    maxWidth: 400,
+    maxHeight: 400,
+    quality: 0.80,
   });
 }
 
@@ -285,16 +287,16 @@ function _canvasToBlob(
  *
  * Tries both JPEG and WebP, picks whichever is smaller.
  *
- * Default settings match question images: 400×400 max, quality 0.3.
+ * Default settings match question images: 800×800 max, quality 0.85.
  */
 export async function compressImageToBlob(
   file: File,
   options: CompressImageOptions = {},
 ): Promise<Blob> {
   const {
-    maxWidth = 400,
-    maxHeight = 400,
-    quality = 0.3,
+    maxWidth = 800,
+    maxHeight = 800,
+    quality = 0.85,
   } = options;
 
   const startTime = performance.now();
@@ -337,14 +339,14 @@ export async function compressImageToBlob(
 /**
  * Compress a File image for answer options and return the result as a Blob.
  *
- * Even more aggressive compression: 200×200 max, quality 0.25.
+ * Moderate compression: 400×400 max, quality 0.80.
  * Matches the settings used by `compressAnswerImage`.
  */
 export function compressAnswerImageToBlob(file: File): Promise<Blob> {
   return compressImageToBlob(file, {
-    maxWidth: 200,
-    maxHeight: 200,
-    quality: 0.25,
+    maxWidth: 400,
+    maxHeight: 400,
+    quality: 0.80,
   });
 }
 
