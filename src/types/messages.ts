@@ -17,7 +17,7 @@ export type HostMessage =
   | { type: 'rejoin_success'; playerName: string; gameCode: string; score: number; currentQuestionIndex: number; phase: string }
   | { type: 'game_state'; phase: string; currentQuestionIndex: number; score: number; standings?: { name: string; score: number; rank: number; avatar?: { emoji: string; color: string } }[] }
   | { type: 'player_list'; players: { name: string; connected: boolean; avatar?: { emoji: string; color: string } }[] }
-  | { type: 'question'; index: number; total: number; text: string; options: string[]; timeLimitSeconds: number; questionType: QuestionType; sliderMin?: number; sliderMax?: number }
+  | { type: 'question'; index: number; total: number; text: string; options: string[]; timeLimitSeconds: number; questionType: QuestionType; sliderMin?: number; sliderMax?: number; image?: string; imageOptions?: string[] }
   | { type: 'answer_ack'; questionIndex: number }
   | {
       type: 'answer_reveal';

@@ -55,7 +55,8 @@ export interface PlayerQuestion {
   questionType: QuestionType;
   sliderMin?: number; // minimum slider value (defaults to 0)
   sliderMax?: number; // maximum slider value (defaults to 100)
-
+  image?: string;          // question image URL (or base64 fallback)
+  imageOptions?: string[]; // answer option image URLs (or base64 fallback)
 }
 
 export interface PlayerStanding {

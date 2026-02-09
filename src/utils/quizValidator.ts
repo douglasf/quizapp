@@ -22,6 +22,7 @@ interface RawQuestion {
 }
 
 const VALID_IMAGE_DATA_URL_PATTERN = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/;
+const VALID_IMAGE_URL_PATTERN = /^https:\/\/.+/;
 const MAX_IMAGE_BYTES = 200 * 1024; // 200 KB per image
 const MAX_TOTAL_IMAGE_BYTES = 3 * 1024 * 1024; // 3 MB total (warning only)
 
@@ -160,27 +161,36 @@ export function validateQuiz(data: unknown): ValidationResult {
         errors.push(`Question ${i + 1}: "timeLimitSeconds" must be between 5 and 120`);
       }
 
-      // Image validation (optional field)
+      // Image validation (optional field — accepts base64 data URLs or HTTPS URLs)
       if (q.image !== undefined && q.image !== null) {
         if (typeof q.image !== 'string') {
-          errors.push(`Question ${i + 1}: "image" must be a string (base64 data URL)`);
-        } else if (!VALID_IMAGE_DATA_URL_PATTERN.test(q.image)) {
-          errors.push(`Question ${i + 1}: "image" must be a valid data URL (data:image/png|jpeg|webp|gif|svg+xml;base64,...)`);
-        } else {
-          // Estimate actual byte size from base64 string length
-          const base64Part = q.image.split(',')[1] ?? '';
-          const estimatedBytes = Math.ceil(base64Part.length * 3 / 4);
-          if (estimatedBytes > MAX_IMAGE_BYTES) {
-            const sizeKB = Math.round(estimatedBytes / 1024);
-            errors.push(`Question ${i + 1}: image is too large (${sizeKB} KB). Maximum allowed is ${MAX_IMAGE_BYTES / 1024} KB.`);
+          errors.push(`Question ${i + 1}: "image" must be a string (base64 data URL or HTTPS URL)`);
+        } else if (q.image.startsWith('data:')) {
+          // Base64 data URL — validate format and size
+          if (!VALID_IMAGE_DATA_URL_PATTERN.test(q.image)) {
+            errors.push(`Question ${i + 1}: "image" must be a valid data URL (data:image/png|jpeg|webp|gif|svg+xml;base64,...)`);
+          } else {
+            const base64Part = q.image.split(',')[1] ?? '';
+            const estimatedBytes = Math.ceil(base64Part.length * 3 / 4);
+            if (estimatedBytes > MAX_IMAGE_BYTES) {
+              const sizeKB = Math.round(estimatedBytes / 1024);
+              errors.push(`Question ${i + 1}: image is too large (${sizeKB} KB). Maximum allowed is ${MAX_IMAGE_BYTES / 1024} KB.`);
+            }
           }
+        } else if (q.image.startsWith('https://')) {
+          // HTTPS URL — validate format only, skip size check (already stored/compressed)
+          if (!VALID_IMAGE_URL_PATTERN.test(q.image)) {
+            errors.push(`Question ${i + 1}: "image" must be a valid HTTPS URL`);
+          }
+        } else {
+          errors.push(`Question ${i + 1}: "image" must be a data URL or HTTPS URL`);
         }
       }
 
-      // Image options validation (optional parallel array to options)
+      // Image options validation (optional parallel array to options — accepts base64 data URLs or HTTPS URLs)
       if (q.imageOptions !== undefined && q.imageOptions !== null) {
         if (!Array.isArray(q.imageOptions)) {
-          errors.push(`Question ${i + 1}: "imageOptions" must be an array of base64 data URL strings`);
+          errors.push(`Question ${i + 1}: "imageOptions" must be an array of data URL or HTTPS URL strings`);
         } else {
           const optLen = Array.isArray(q.options) ? q.options.length : 0;
           if (q.imageOptions.length !== optLen) {
@@ -188,16 +198,26 @@ export function validateQuiz(data: unknown): ValidationResult {
           }
           (q.imageOptions as unknown[]).forEach((img: unknown, j: number) => {
             if (typeof img !== 'string') {
-              errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a string (base64 data URL)`);
-            } else if (!VALID_IMAGE_DATA_URL_PATTERN.test(img)) {
-              errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a valid data URL (data:image/png|jpeg|webp|gif|svg+xml;base64,...)`);
-            } else {
-              const base64Part = img.split(',')[1] ?? '';
-              const estimatedBytes = Math.ceil(base64Part.length * 3 / 4);
-              if (estimatedBytes > MAX_IMAGE_BYTES) {
-                const sizeKB = Math.round(estimatedBytes / 1024);
-                errors.push(`Question ${i + 1}, imageOptions[${j}]: image is too large (${sizeKB} KB). Maximum allowed is ${MAX_IMAGE_BYTES / 1024} KB.`);
+              errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a string (data URL or HTTPS URL)`);
+            } else if ((img as string).startsWith('data:')) {
+              // Base64 data URL — validate format and size
+              if (!VALID_IMAGE_DATA_URL_PATTERN.test(img as string)) {
+                errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a valid data URL (data:image/png|jpeg|webp|gif|svg+xml;base64,...)`);
+              } else {
+                const base64Part = (img as string).split(',')[1] ?? '';
+                const estimatedBytes = Math.ceil(base64Part.length * 3 / 4);
+                if (estimatedBytes > MAX_IMAGE_BYTES) {
+                  const sizeKB = Math.round(estimatedBytes / 1024);
+                  errors.push(`Question ${i + 1}, imageOptions[${j}]: image is too large (${sizeKB} KB). Maximum allowed is ${MAX_IMAGE_BYTES / 1024} KB.`);
+                }
               }
+            } else if ((img as string).startsWith('https://')) {
+              // HTTPS URL — validate format only, skip size check
+              if (!VALID_IMAGE_URL_PATTERN.test(img as string)) {
+                errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a valid HTTPS URL`);
+              }
+            } else {
+              errors.push(`Question ${i + 1}, imageOptions[${j}]: must be a data URL or HTTPS URL`);
             }
           });
         }
