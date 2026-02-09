@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "worker:dev": "npm run dev --prefix worker",
+    "worker:deploy": "npm run deploy --prefix worker",
+    "worker:typecheck": "npm run typecheck --prefix worker",
+    "deploy:worker": "cd worker && wrangler deploy"
   },
   "dependencies": {
     "peerjs": "^1.5.5",

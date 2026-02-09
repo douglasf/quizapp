@@ -1,0 +1,50 @@
+# Deploy Cloudflare Worker API
+#
+# Triggers on push to main branch when worker/ files change.
+# Deploys the Hono-based API Worker to Cloudflare.
+#
+# Required GitHub secrets:
+#   CLOUDFLARE_API_TOKEN  - API token with Workers write permissions
+#   CLOUDFLARE_ACCOUNT_ID - Your Cloudflare account ID
+#
+# Required Cloudflare secrets (set via `wrangler secret put`):
+#   JWT_SECRET - Secret key for signing JWT tokens
+
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: worker
+
+      - name: Type check
+        run: npm run typecheck
+        working-directory: worker
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy

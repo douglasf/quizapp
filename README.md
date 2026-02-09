@@ -294,12 +294,87 @@ npm run dev
 
 ### Deployment
 
-The app automatically deploys to GitHub Pages when you push to the `main` branch. The GitHub Actions workflow handles building and deploying.
+The project has two independently deployed parts:
 
-To deploy manually:
-1. Push your changes to the `main` branch
-2. GitHub Actions will automatically build and deploy
-3. The app will be available at `https://douglasnilsfrisk.github.io/quizapp/`
+| Component | Platform | Trigger | Workflow |
+|-----------|----------|---------|----------|
+| **SPA (frontend)** | GitHub Pages | Push to `main` | `.github/workflows/deploy.yml` |
+| **Worker (API)** | Cloudflare Workers | Push to `main` (worker/ changes) | `.github/workflows/deploy-worker.yml` |
+
+#### SPA Deployment (GitHub Pages)
+
+Automatic — push to `main` and the GitHub Actions workflow builds the Vite app and deploys to GitHub Pages.
+
+```bash
+# Manual build (for testing)
+npm run build
+```
+
+#### Worker Deployment (Cloudflare)
+
+**First-time setup:**
+
+1. Create a free [Cloudflare account](https://dash.cloudflare.com/sign-up) and install Wrangler:
+
+   ```bash
+   cd worker && npm install
+   npx wrangler login
+   ```
+
+2. Create the D1 database and R2 bucket:
+
+   ```bash
+   npx wrangler d1 create quizapp
+   npx wrangler r2 bucket create quiz-images
+   ```
+
+3. Copy the `database_id` from the output into `worker/wrangler.toml`:
+
+   ```toml
+   database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+   ```
+
+4. Apply database migrations:
+
+   ```bash
+   npx wrangler d1 migrations apply quizapp --remote
+   ```
+
+5. Set the JWT secret (you'll be prompted to enter a value):
+
+   ```bash
+   npx wrangler secret put JWT_SECRET
+   ```
+
+6. Deploy:
+
+   ```bash
+   npm run deploy:worker
+   ```
+
+**CI/CD setup (GitHub Actions):**
+
+Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `CLOUDFLARE_API_TOKEN` | API token with **Workers** write permissions ([create one here](https://dash.cloudflare.com/profile/api-tokens)) |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID (visible on the Workers dashboard) |
+
+Once set, the Worker auto-deploys whenever files in `worker/` change on the `main` branch.
+
+#### Deploy Commands
+
+```bash
+# Deploy SPA (via GitHub Actions — just push to main)
+git push origin main
+
+# Deploy Worker manually
+npm run deploy:worker
+
+# Or from the worker directory
+cd worker && npx wrangler deploy
+```
 
 ### Project Structure
 
