@@ -1,3 +1,8 @@
+MANUALLY ADDED STUFF! when asked rewrite these for the agent
+1. add .env to gitignore, this should not be commited right?
+1. upload images to cloudflare on quiz create rather than immediately when selected
+1. player avatar icons not working
+
 # Quiz App TODO
 
 ## 🟢 COMPLETED
