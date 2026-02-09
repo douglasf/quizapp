@@ -1,10 +1,50 @@
-MANUALLY ADDED STUFF! when asked rewrite these for the agent
-1. add .env to gitignore, this should not be commited right?
-1. upload images to cloudflare on quiz create rather than immediately when selected
-1. player avatar icons not working
-1. edit quiz feature
-
 # Quiz App TODO
+
+## 🔴 BUGS
+
+### Player Avatar Icons Not Displaying
+- [ ] **Player avatar icons are broken** — avatars do not render on the player/host screens
+  - **Problem**: Players select an avatar during join, but the icon fails to display (missing asset, broken path, or rendering issue)
+  - **Why it matters**: Avatars are a core part of the player identity and game feel — without them the experience looks broken
+  - **Scope**: Small — likely a broken import path, missing asset, or CSS issue. Investigate the avatar component and trace from selection to render
+
+---
+
+## 🟡 CHORES & CONFIG
+
+### Add `.env` to `.gitignore`
+- [ ] **Prevent `.env` from being committed to version control**
+  - **Problem**: The root `.env` file is not listed in `.gitignore`. Currently only `.env.production` is ignored. The `.env` file exists locally and contains configuration values (likely API keys or secrets) that should never be committed
+  - **Why it matters**: Accidentally committing secrets is a security risk — even in a private repo, credentials in git history are hard to fully remove
+  - **Scope**: Trivial — add `.env` to `.gitignore`. Verify it's not already tracked (confirmed: it is not)
+
+---
+
+## 🟠 ENHANCEMENTS
+
+### Reduce Image Compression Aggressiveness
+- [ ] **Decrease the heavy compression applied to uploaded images** (both question images and answer option images)
+  - **Problem**: The current compression settings were tuned aggressively to keep payload sizes small for P2P transfer, but the resulting image quality is noticeably poor — especially for detailed images like maps, flags, or photos
+  - **Why it matters**: Image-based questions (flags, landmarks, etc.) rely on visual clarity. Over-compressed images make questions harder to read and reduce quiz quality
+  - **Scope**: Small — adjust quality/resolution parameters in the image compression utility. May want to A/B test a few quality levels to find the right balance between clarity and transfer size
+
+---
+
+## 🔵 FEATURES
+
+### Defer Image Upload to Quiz Creation Time
+- [ ] **Upload images to Cloudflare on quiz save/create, not immediately on selection**
+  - **Problem**: Currently, images are uploaded to Cloudflare the moment the user selects them in the quiz editor. If the user abandons the quiz or swaps images, orphaned uploads accumulate in Cloudflare storage with no cleanup
+  - **Why it matters**: Wastes Cloudflare storage and API calls on images that may never be used. Also makes the editor feel slower since each image selection triggers a network request
+  - **Scope**: Medium — requires buffering selected images locally (as base64 or blobs) during editing, then batch-uploading on save. Need to update the create/save flow and handle upload failures gracefully
+
+### Edit Existing Quizzes
+- [ ] **Allow users to edit a quiz after it has been created**
+  - **Problem**: There is currently no way to modify a quiz once saved. To fix a typo, adjust a timer, or swap a question, the user must recreate the entire quiz from scratch
+  - **Why it matters**: This is a major usability gap — quiz creation takes effort, and being unable to iterate on a quiz is frustrating
+  - **Scope**: Medium to large — requires loading an existing quiz into the editor, preserving its ID/metadata, handling image re-uploads or diffing, and saving updates rather than creating a new record. The quiz editor UI already exists, so the main work is the data flow (load → edit → update)
+
+---
 
 ## 🟢 COMPLETED
 
