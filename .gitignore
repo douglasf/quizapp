@@ -13,6 +13,7 @@ dist-ssr
 *.local
 
 # Environment files with real values (keep .env.example as template)
+.env
 .env.production
 
 # Editor directories and files
