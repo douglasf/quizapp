@@ -1,0 +1,11 @@
+name = "quiz-image-worker"
+main = "src/index.ts"
+compatibility_date = "2024-12-30"
+
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "quiz-images"
+
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173,https://douglasf.github.io"
+MAX_IMAGE_SIZE = "2097152"  # 2 MB (2 * 1024 * 1024)
