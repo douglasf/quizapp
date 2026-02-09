@@ -13,6 +13,7 @@ A free, real-time multiplayer quiz app that runs entirely in the browser. No ser
 - [Playing a Game](#playing-a-game)
 - [Sharing Quizzes](#sharing-quizzes)
 - [Troubleshooting](#troubleshooting)
+- [Image Hosting (Cloud Upload)](#image-hosting-cloud-upload)
 - [Technical Details](#technical-details)
 - [Development](#development)
 
@@ -165,6 +166,65 @@ To use someone else's quiz:
 - `correctIndex` must be 0, 1, 2, or 3
 - The quiz needs at least 1 question and a title
 
+## Image Hosting (Cloud Upload)
+
+Quiz App supports two modes for handling images in quizzes:
+
+### Inline Mode (Default, No Setup)
+
+Images are embedded directly in the quiz data as base64 strings. This works out of the box with no configuration — but it makes quiz files larger and shared links longer.
+
+### Cloud Mode (Recommended for Image-Heavy Quizzes)
+
+Images are uploaded to a **Cloudflare R2** bucket via a lightweight Worker. The quiz stores short HTTPS URLs instead of base64 data, resulting in:
+
+- Much smaller quiz JSON files
+- Much shorter shareable links
+- Faster quiz loading (images served from CDN with caching)
+- Better performance for quizzes with many images
+
+#### Quick Setup
+
+1. **Deploy the image Worker** (requires a free [Cloudflare account](https://dash.cloudflare.com/sign-up)):
+
+   ```bash
+   cd worker
+   npm install
+   npx wrangler login
+   npx wrangler r2 bucket create quiz-images
+   npx wrangler deploy
+   ```
+
+2. **Configure the client** — set the Worker URL in `.env.local` (for development) or `.env.production` (for builds):
+
+   ```env
+   VITE_IMAGE_WORKER_URL=https://quiz-image-worker.your-account.workers.dev
+   ```
+
+3. **Rebuild the app** — `npm run build`
+
+That's it! The quiz creator will show a **Cloud Image Upload** toggle when the Worker is available.
+
+#### How It Works
+
+When cloud mode is enabled:
+1. User selects an image in the quiz creator
+2. The image is compressed client-side (JPEG/WebP, 400x400 for questions, 200x200 for answers)
+3. The compressed image is uploaded to the Cloudflare Worker
+4. The Worker stores it in R2 and returns an HTTPS URL
+5. The quiz stores the URL instead of base64 data
+
+If the Worker is unavailable or an upload fails, the app **automatically falls back** to inline base64 with a notification — no data is lost.
+
+#### Backward Compatibility
+
+- Old quizzes with base64 images continue to work perfectly
+- Quizzes can mix cloud URLs and inline base64 images
+- Importing/exporting preserves both URL and base64 formats
+- The cloud toggle can be turned off at any time
+
+For detailed Worker documentation, see [`worker/README.md`](worker/README.md). For integration testing, see [`TESTING.md`](TESTING.md).
+
 ## Technical Details
 
 ### Tech Stack
@@ -172,6 +232,7 @@ To use someone else's quiz:
 - **Vite** for development and building
 - **React Router** (hash routing for static hosting compatibility)
 - **PeerJS** for WebRTC peer-to-peer connections
+- **Cloudflare Workers + R2** for image hosting (optional)
 - **qrcode.react** for QR code generation
 - **GitHub Pages** for hosting
 
@@ -247,10 +308,14 @@ src/
   components/      # React components (Home, QuizCreator, HostPage, PlayerJoin, etc.)
   hooks/           # Custom hooks (useHost, usePlayer, useGameState)
   types/           # TypeScript type definitions (quiz, game, messages)
-  utils/           # Utility functions (peer config, game code generation, validation)
+  utils/           # Utility functions (peer config, game code, validation, image upload)
   App.tsx           # Root component with routes
   main.tsx          # Entry point with HashRouter
   index.css         # Global styles
+worker/
+  src/index.ts      # Cloudflare Worker for R2 image upload/serving
+  wrangler.toml     # Worker configuration (R2 bucket, CORS origins)
+  package.json      # Worker dependencies
 ```
 
 ---

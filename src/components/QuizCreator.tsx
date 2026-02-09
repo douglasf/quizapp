@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Quiz, Question, QuestionType } from '../types/quiz'
 import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz'
 import { validateQuiz } from '../utils/quizValidator'
-import { compressImageFile, COMPRESS_THRESHOLD, compressAnswerImage, readFileAsDataUrl } from '../utils/imageCompression'
+import { compressImageFile, COMPRESS_THRESHOLD, compressAnswerImage, readFileAsDataUrl, compressImageToBlob, compressAnswerImageToBlob } from '../utils/imageCompression'
+import { checkWorkerHealth, uploadImageToR2 } from '../utils/imageUpload'
 import './QuizCreator.css'
 
 let questionIdCounter = 0;
@@ -114,6 +115,40 @@ function QuizCreator() {
   const [compressingImage, setCompressingImage] = useState<number | null>(null)
   // Tracks which answer option is currently compressing: "questionIndex-optionIndex"
   const [compressingAnswerImage, setCompressingAnswerImage] = useState<string | null>(null)
+
+  // Cloud upload state
+  const [imageStorageMode, setImageStorageMode] = useState<'cloud' | 'inline'>('cloud')
+  const [workerAvailable, setWorkerAvailable] = useState<boolean | null>(null) // null = checking
+  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set())
+  // Notification messages for upload feedback
+  const [notification, setNotification] = useState<{ type: 'info' | 'warning' | 'error'; message: string } | null>(null)
+  const notificationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showNotification = useCallback((type: 'info' | 'warning' | 'error', message: string, durationMs = 5000) => {
+    if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current)
+    setNotification({ type, message })
+    notificationTimerRef.current = setTimeout(() => setNotification(null), durationMs)
+  }, [])
+
+  // Check Worker health on mount
+  useEffect(() => {
+    let cancelled = false
+    checkWorkerHealth().then((available) => {
+      if (cancelled) return
+      setWorkerAvailable(available)
+      if (!available) {
+        setImageStorageMode('inline')
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  // Cleanup notification timer on unmount
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current)
+    }
+  }, [])
 
   function updateQuestion(index: number, updated: QuestionWithId) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? updated : q)))
@@ -259,17 +294,65 @@ function QuizCreator() {
     })
   }
 
+  // Helper to add/remove keys from the uploadingImages set
+  function addUploadingImage(key: string) {
+    setUploadingImages(prev => new Set(prev).add(key))
+  }
+  function removeUploadingImage(key: string) {
+    setUploadingImages(prev => {
+      const next = new Set(prev)
+      next.delete(key)
+      return next
+    })
+  }
+
   async function handleImageUpload(index: number, file: File) {
-    const isLarge = file.size > COMPRESS_THRESHOLD
-    if (isLarge) setCompressingImage(index)
-    try {
-      const dataUrl = await compressImageFile(file)
-      const q = questions[index]
-      updateQuestion(index, { ...q, image: dataUrl })
-    } catch {
-      // Silently fail — could show error but keeping UX simple
-    } finally {
-      if (isLarge) setCompressingImage(null)
+    const uploadKey = `question-${index}`
+
+    if (imageStorageMode === 'cloud') {
+      // Cloud mode: compress to blob → upload to R2 → store URL
+      addUploadingImage(uploadKey)
+      try {
+        const blob = await compressImageToBlob(file)
+        const result = await uploadImageToR2(blob)
+        if (result.success) {
+          const q = questions[index]
+          updateQuestion(index, { ...q, image: result.url })
+          showNotification('info', 'Image uploaded to CDN successfully')
+        } else {
+          // Fallback to inline base64
+          console.warn('[CloudUpload] Upload failed, falling back to inline:', result.error)
+          showNotification('warning', `Cloud upload failed — saved inline instead. ${result.error}`)
+          const dataUrl = await compressImageFile(file)
+          const q = questions[index]
+          updateQuestion(index, { ...q, image: dataUrl })
+        }
+      } catch {
+        // Fallback to inline base64
+        showNotification('warning', 'Cloud upload failed — saved inline instead.')
+        try {
+          const dataUrl = await compressImageFile(file)
+          const q = questions[index]
+          updateQuestion(index, { ...q, image: dataUrl })
+        } catch {
+          // Both paths failed — silently fail
+        }
+      } finally {
+        removeUploadingImage(uploadKey)
+      }
+    } else {
+      // Inline mode: existing base64 flow
+      const isLarge = file.size > COMPRESS_THRESHOLD
+      if (isLarge) setCompressingImage(index)
+      try {
+        const dataUrl = await compressImageFile(file)
+        const q = questions[index]
+        updateQuestion(index, { ...q, image: dataUrl })
+      } catch {
+        // Silently fail — could show error but keeping UX simple
+      } finally {
+        if (isLarge) setCompressingImage(null)
+      }
     }
   }
 
@@ -307,18 +390,61 @@ function QuizCreator() {
 
   async function handleAnswerImageUpload(qIndex: number, optIndex: number, file: File) {
     const key = `${qIndex}-${optIndex}`
-    setCompressingAnswerImage(key)
-    try {
-      const dataUrl = await readFileAsDataUrl(file)
-      const compressed = await compressAnswerImage(dataUrl)
-      const q = questions[qIndex]
-      const imageOptions = [...(q.imageOptions ?? [])]
-      imageOptions[optIndex] = compressed
-      updateQuestion(qIndex, { ...q, imageOptions })
-    } catch {
-      // Silently fail — keeping UX simple
-    } finally {
-      setCompressingAnswerImage(null)
+
+    if (imageStorageMode === 'cloud') {
+      // Cloud mode: compress to blob → upload to R2 → store URL
+      addUploadingImage(`answer-${key}`)
+      try {
+        const blob = await compressAnswerImageToBlob(file)
+        const result = await uploadImageToR2(blob)
+        if (result.success) {
+          const q = questions[qIndex]
+          const imageOptions = [...(q.imageOptions ?? [])]
+          imageOptions[optIndex] = result.url
+          updateQuestion(qIndex, { ...q, imageOptions })
+          showNotification('info', 'Answer image uploaded to CDN')
+        } else {
+          // Fallback to inline base64
+          console.warn('[CloudUpload] Answer upload failed, falling back to inline:', result.error)
+          showNotification('warning', `Cloud upload failed — saved inline instead. ${result.error}`)
+          const dataUrl = await readFileAsDataUrl(file)
+          const compressed = await compressAnswerImage(dataUrl)
+          const q = questions[qIndex]
+          const imageOptions = [...(q.imageOptions ?? [])]
+          imageOptions[optIndex] = compressed
+          updateQuestion(qIndex, { ...q, imageOptions })
+        }
+      } catch {
+        // Fallback to inline base64
+        showNotification('warning', 'Cloud upload failed — saved inline instead.')
+        try {
+          const dataUrl = await readFileAsDataUrl(file)
+          const compressed = await compressAnswerImage(dataUrl)
+          const q = questions[qIndex]
+          const imageOptions = [...(q.imageOptions ?? [])]
+          imageOptions[optIndex] = compressed
+          updateQuestion(qIndex, { ...q, imageOptions })
+        } catch {
+          // Both paths failed
+        }
+      } finally {
+        removeUploadingImage(`answer-${key}`)
+      }
+    } else {
+      // Inline mode: existing base64 flow
+      setCompressingAnswerImage(key)
+      try {
+        const dataUrl = await readFileAsDataUrl(file)
+        const compressed = await compressAnswerImage(dataUrl)
+        const q = questions[qIndex]
+        const imageOptions = [...(q.imageOptions ?? [])]
+        imageOptions[optIndex] = compressed
+        updateQuestion(qIndex, { ...q, imageOptions })
+      } catch {
+        // Silently fail — keeping UX simple
+      } finally {
+        setCompressingAnswerImage(null)
+      }
     }
   }
 
@@ -366,10 +492,27 @@ function QuizCreator() {
 
   const optionLabels = ['A', 'B', 'C', 'D']
 
+  const hasUploadsInProgress = uploadingImages.size > 0
+
   return (
     <div className="page quiz-creator">
       <div className="creator-container">
         <h1>Create a Quiz</h1>
+
+        {/* Notification toast */}
+        {notification && (
+          <div className={`notification notification-${notification.type}`} role="status">
+            <span className="notification-message">{notification.message}</span>
+            <button
+              type="button"
+              className="notification-dismiss"
+              onClick={() => setNotification(null)}
+              aria-label="Dismiss notification"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {errors.length > 0 && (
           <div className="error-box" role="alert" ref={errorBoxRef}>
@@ -396,6 +539,36 @@ function QuizCreator() {
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
+
+        {/* Image storage mode toggle */}
+        {workerAvailable !== false && (
+          <div className="form-group image-storage-toggle-group">
+            <div className="toggle-row">
+              <div className="toggle-label-block">
+                <span className="form-label toggle-label">Cloud Image Upload</span>
+                <span className="toggle-hint">
+                  {imageStorageMode === 'cloud'
+                    ? 'Images uploaded to CDN for smaller quiz files'
+                    : 'Images embedded inline as base64 data'}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={`toggle-switch ${imageStorageMode === 'cloud' ? 'toggle-on' : ''}`}
+                role="switch"
+                aria-checked={imageStorageMode === 'cloud'}
+                aria-label="Cloud image upload"
+                disabled={workerAvailable === null}
+                onClick={() => setImageStorageMode(prev => prev === 'cloud' ? 'inline' : 'cloud')}
+              >
+                <span className="toggle-knob" />
+              </button>
+            </div>
+            {workerAvailable === null && (
+              <p className="hint">Checking image service availability...</p>
+            )}
+          </div>
+        )}
 
         {/* Questions */}
         <div className="questions-list">
@@ -471,6 +644,11 @@ function QuizCreator() {
                     >
                       Remove image
                     </button>
+                  </div>
+                ) : uploadingImages.has(`question-${qIndex}`) ? (
+                  <div className="upload-progress-indicator">
+                    <span className="upload-spinner" />
+                    <span>Uploading to CDN...</span>
                   </div>
                 ) : (
                   <>
@@ -742,6 +920,11 @@ function QuizCreator() {
                                 Replace
                               </button>
                             </div>
+                          ) : uploadingImages.has(`answer-${qIndex}-${oIndex}`) ? (
+                            <div className="upload-progress-indicator">
+                              <span className="upload-spinner" />
+                              <span>Uploading...</span>
+                            </div>
                           ) : (
                             <div className="answer-image-dropzone">
                               <input
@@ -835,6 +1018,11 @@ function QuizCreator() {
                                   Replace
                                 </button>
                               </div>
+                            ) : uploadingImages.has(`answer-${qIndex}-${oIndex}`) ? (
+                              <div className="upload-progress-indicator">
+                                <span className="upload-spinner" />
+                                <span>Uploading...</span>
+                              </div>
                             ) : (
                               <div className="answer-image-dropzone">
                                 <input
@@ -921,8 +1109,14 @@ function QuizCreator() {
           <button type="button" className="btn btn-secondary" onClick={handleCancel}>
             Cancel
           </button>
-          <button type="button" className="btn btn-primary" onClick={handleSave}>
-            Save Quiz
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={hasUploadsInProgress}
+            title={hasUploadsInProgress ? 'Please wait for image uploads to finish' : undefined}
+          >
+            {hasUploadsInProgress ? 'Uploading...' : 'Save Quiz'}
           </button>
         </div>
       </div>
