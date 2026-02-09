@@ -1,0 +1,5 @@
+/* Signup shares all base auth styles from Login.css.
+   Import it so the styles are available regardless of render order. */
+@import './Login.css';
+
+/* Signup-specific overrides (if needed in the future) go here. */
