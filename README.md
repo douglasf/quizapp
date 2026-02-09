@@ -2,7 +2,7 @@
 
 A free, real-time multiplayer quiz app that runs entirely in the browser. No server, no accounts, no installation — just create a quiz, share a code, and play with friends.
 
-**[Play Now](https://douglasnilsfrisk.github.io/quizapp/)**
+**[Play Now](https://douglasf.github.io/quizapp/)**
 
 ## Table of Contents
 

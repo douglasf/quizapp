@@ -20,5 +20,5 @@ bucket_name = "quiz-images"
 # ─── Environment Variables ────────────────────────────────────────────────────
 # Public vars only — secrets (JWT_SECRET) are set via `wrangler secret put`.
 [vars]
-CORS_ORIGIN = "https://douglasfrisk.github.io"
+CORS_ORIGIN = "https://douglasf.github.io"
 MAX_IMAGE_SIZE = "2097152"

@@ -41,7 +41,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_IMAGE_WORKER_URL: https://quiz-image-worker.douglasfrisk.workers.dev
+          VITE_API_URL: https://quizapp-api.douglasfrisk.workers.dev
+          VITE_IMAGE_WORKER_URL: https://quizapp-api.douglasfrisk.workers.dev
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
