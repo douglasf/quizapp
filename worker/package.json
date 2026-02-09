@@ -1,5 +1,5 @@
 {
-  "name": "quiz-image-worker",
+  "name": "quizapp-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,12 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "@hono/zod-validator": "^0.4.2",
+    "zod": "^3.24.0",
+    "nanoid": "^5.1.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",

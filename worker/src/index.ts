@@ -1,22 +1,59 @@
 /**
- * Quiz Image Worker
- *
- * Handles image upload, storage, and serving via Cloudflare R2.
+ * QuizApp API — Cloudflare Worker powered by Hono
  *
  * Routes:
- *   POST /api/upload    — Upload an image to R2
- *   GET  /api/health    — Health check
- *   GET  /images/:key   — Serve an image from R2
+ *   GET  /api/health            — Health check
+ *   POST /api/upload            — Upload an image to R2
+ *   GET  /images/:key           — Serve an image from R2
+ *   POST /api/auth/signup       — Create a new account
+ *   POST /api/auth/login        — Log in with email + password
+ *   POST /api/auth/refresh      — Rotate refresh token
+ *   POST /api/auth/logout       — Revoke refresh token
+ *   GET  /api/auth/me           — Get current user
+ *   POST /api/quizzes           — Create a new quiz (protected)
+ *   GET  /api/quizzes           — List user's quizzes (protected)
+ *   GET  /api/quizzes/:id       — Get a quiz by ID (public)
+ *   DELETE /api/quizzes/:id     — Delete a quiz (protected, owner only)
+ *   GET  /q/:id                 — Short link redirect to SPA
  */
 
-export interface Env {
-  IMAGES_BUCKET: R2Bucket;
-  ALLOWED_ORIGINS: string;
-  MAX_IMAGE_SIZE: string;
-}
+import { Hono } from "hono";
+import type { Env } from "./types";
+import { cors } from "./middleware/cors";
+import authRoutes from "./routes/auth";
+import quizRoutes from "./routes/quizzes";
+import shortlinkRoutes from "./routes/shortlinks";
 
 // ---------------------------------------------------------------------------
-// Constants
+// App
+// ---------------------------------------------------------------------------
+
+const app = new Hono<{ Bindings: Env }>();
+
+// Global middleware
+app.use("*", cors);
+
+// ---------------------------------------------------------------------------
+// Auth routes
+// ---------------------------------------------------------------------------
+
+app.route("/api/auth", authRoutes);
+app.route("/api/quizzes", quizRoutes);
+app.route("/q", shortlinkRoutes);
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+app.get("/api/health", (c) => {
+  return c.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Image upload
 // ---------------------------------------------------------------------------
 
 const ALLOWED_CONTENT_TYPES = new Set([
@@ -34,257 +71,127 @@ const CONTENT_TYPE_TO_EXT: Record<string, string> = {
 };
 
 const DEFAULT_MAX_SIZE = 2 * 1024 * 1024; // 2 MB
-
 const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000"; // 1 year
 
-// ---------------------------------------------------------------------------
-// CORS helpers
-// ---------------------------------------------------------------------------
-
-function getAllowedOrigins(env: Env): string[] {
-  return env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
-}
-
-function getCorsOrigin(request: Request, env: Env): string | null {
-  const origin = request.headers.get("Origin");
-  if (!origin) return null;
-  const allowed = getAllowedOrigins(env);
-  return allowed.includes(origin) ? origin : null;
-}
-
-function corsHeaders(origin: string | null): HeadersInit {
-  if (!origin) return {};
-  return {
-    "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Max-Age": "86400",
-  };
-}
-
-function handleOptions(request: Request, env: Env): Response {
-  const origin = getCorsOrigin(request, env);
-  return new Response(null, {
-    status: 204,
-    headers: corsHeaders(origin),
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Return the configured max image size in bytes. */
 function getMaxSize(env: Env): number {
   const parsed = Number.parseInt(env.MAX_IMAGE_SIZE, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_SIZE;
 }
 
-/** Generate a UUID v4 using the Web Crypto API (available in Workers). */
-function generateUUID(): string {
-  return crypto.randomUUID();
-}
-
-/** Build a JSON error response with CORS headers. */
-function jsonError(
-  message: string,
-  status: number,
-  origin: string | null,
-): Response {
-  return Response.json({ error: message }, { status, headers: corsHeaders(origin) });
-}
-
-/** Build a JSON success response with CORS headers. */
-function jsonOk(data: unknown, origin: string | null): Response {
-  return Response.json(data, { headers: corsHeaders(origin) });
-}
-
-// ---------------------------------------------------------------------------
-// Route handlers
-// ---------------------------------------------------------------------------
-
-function handleHealth(request: Request, env: Env): Response {
-  const origin = getCorsOrigin(request, env);
-  return jsonOk(
-    { status: "ok", timestamp: new Date().toISOString() },
-    origin,
-  );
-}
-
-async function handleUpload(request: Request, env: Env): Promise<Response> {
-  const origin = getCorsOrigin(request, env);
-
-  // 1. Validate request content-type is multipart/form-data
-  const contentType = request.headers.get("Content-Type") ?? "";
+app.post("/api/upload", async (c) => {
+  const contentType = c.req.header("Content-Type") ?? "";
   if (!contentType.includes("multipart/form-data")) {
-    return jsonError(
-      "Content-Type must be multipart/form-data",
-      400,
-      origin,
-    );
+    return c.json({ error: "Content-Type must be multipart/form-data" }, 400);
   }
 
-  // 2. Parse the form data
   let formData: FormData;
   try {
-    formData = await request.formData();
+    formData = await c.req.raw.formData();
   } catch {
-    return jsonError("Failed to parse multipart form data", 400, origin);
+    return c.json({ error: "Failed to parse multipart form data" }, 400);
   }
 
-  // 3. Extract the file field
   const fileEntry = formData.get("file");
   if (!fileEntry || typeof fileEntry === "string") {
-    return jsonError(
-      'Missing or invalid "file" field in form data',
-      400,
-      origin,
-    );
+    return c.json({ error: 'Missing or invalid "file" field in form data' }, 400);
   }
   const file: File = fileEntry;
 
-  // 4. Validate content type
-  const fileType = file.type;
-  if (!ALLOWED_CONTENT_TYPES.has(fileType)) {
-    return jsonError(
-      `Unsupported file type "${fileType}". Allowed: ${[...ALLOWED_CONTENT_TYPES].join(", ")}`,
+  if (!ALLOWED_CONTENT_TYPES.has(file.type)) {
+    return c.json(
+      {
+        error: `Unsupported file type "${file.type}". Allowed: ${[...ALLOWED_CONTENT_TYPES].join(", ")}`,
+      },
       400,
-      origin,
     );
   }
 
-  // 5. Validate file size
-  const maxSize = getMaxSize(env);
+  const maxSize = getMaxSize(c.env);
   if (file.size > maxSize) {
     const maxMB = (maxSize / (1024 * 1024)).toFixed(1);
-    return jsonError(
-      `File too large (${file.size} bytes). Maximum allowed: ${maxSize} bytes (${maxMB} MB)`,
+    return c.json(
+      {
+        error: `File too large (${file.size} bytes). Maximum: ${maxSize} bytes (${maxMB} MB)`,
+      },
       413,
-      origin,
     );
   }
 
-  // 6. Generate unique key with proper extension
-  const ext = CONTENT_TYPE_TO_EXT[fileType];
-  const uuid = generateUUID();
-  const key = `${uuid}.${ext}`;
+  const ext = CONTENT_TYPE_TO_EXT[file.type];
+  const key = `${crypto.randomUUID()}.${ext}`;
 
-  // 7. Read file bytes and store in R2
   try {
     const arrayBuffer = await file.arrayBuffer();
-    await env.IMAGES_BUCKET.put(key, arrayBuffer, {
+    await c.env.R2.put(key, arrayBuffer, {
       httpMetadata: {
-        contentType: fileType,
+        contentType: file.type,
         cacheControl: IMMUTABLE_CACHE_CONTROL,
       },
     });
   } catch (err) {
     console.error("R2 put failed:", err);
-    return jsonError("Failed to store image", 500, origin);
+    return c.json({ error: "Failed to store image" }, 500);
   }
 
-  // 8. Build the public URL
-  //    The worker serves images at /images/<key>, so we use the request URL's origin.
-  const workerUrl = new URL(request.url);
+  const workerUrl = new URL(c.req.url);
   const imageUrl = `${workerUrl.origin}/images/${key}`;
 
-  return jsonOk({ url: imageUrl }, origin);
-}
+  return c.json({ url: imageUrl });
+});
 
-async function handleGetImage(
-  key: string,
-  request: Request,
-  env: Env,
-): Promise<Response> {
-  const origin = getCorsOrigin(request, env);
+// ---------------------------------------------------------------------------
+// Image serving
+// ---------------------------------------------------------------------------
 
-  // Sanitize key: only allow alphanumeric, hyphens, dots (prevent path traversal)
+app.get("/images/:key", async (c) => {
+  const key = c.req.param("key");
+
+  // Sanitize key: only allow alphanumeric, hyphens, underscores, dots
   if (!/^[\w-]+\.\w+$/.test(key)) {
-    return jsonError("Invalid image key", 400, origin);
+    return c.json({ error: "Invalid image key" }, 400);
   }
 
   try {
-    const object = await env.IMAGES_BUCKET.get(key);
+    const object = await c.env.R2.get(key);
 
     if (!object) {
-      return jsonError("Image not found", 404, origin);
+      return c.json({ error: "Image not found" }, 404);
     }
 
-    const headers = new Headers(corsHeaders(origin));
+    const headers = new Headers();
     headers.set(
       "Content-Type",
       object.httpMetadata?.contentType ?? "application/octet-stream",
     );
     headers.set("Cache-Control", IMMUTABLE_CACHE_CONTROL);
-    // ETag for conditional requests
     headers.set("ETag", object.httpEtag);
 
     return new Response(object.body, { headers });
   } catch (err) {
     console.error("R2 get failed:", err);
-    return jsonError("Failed to retrieve image", 500, origin);
+    return c.json({ error: "Failed to retrieve image" }, 500);
   }
-}
+});
 
 // ---------------------------------------------------------------------------
-// Router
+// 404 fallback
 // ---------------------------------------------------------------------------
 
-function matchRoute(
-  method: string,
-  pathname: string,
-): { handler: string; params?: Record<string, string> } | null {
-  if (method === "GET" && pathname === "/api/health") {
-    return { handler: "health" };
-  }
-  if (method === "POST" && pathname === "/api/upload") {
-    return { handler: "upload" };
-  }
-  if (method === "GET" && pathname.startsWith("/images/")) {
-    const key = pathname.slice("/images/".length);
-    if (key) return { handler: "image", params: { key } };
-  }
-  return null;
-}
+app.notFound((c) => {
+  return c.json({ error: "Not found" }, 404);
+});
 
 // ---------------------------------------------------------------------------
-// Entry point
+// Global error handler
 // ---------------------------------------------------------------------------
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    // Handle CORS preflight
-    if (request.method === "OPTIONS") {
-      return handleOptions(request, env);
-    }
+app.onError((err, c) => {
+  console.error("Unhandled error:", err);
+  return c.json({ error: "Internal server error" }, 500);
+});
 
-    const url = new URL(request.url);
-    const route = matchRoute(request.method, url.pathname);
-    const origin = getCorsOrigin(request, env);
+// ---------------------------------------------------------------------------
+// Export
+// ---------------------------------------------------------------------------
 
-    if (!route) {
-      return jsonError("Not found", 404, origin);
-    }
-
-    try {
-      switch (route.handler) {
-        case "health":
-          return handleHealth(request, env);
-        case "upload":
-          return handleUpload(request, env);
-        case "image": {
-          const key = route.params?.key;
-          if (!key) {
-            return jsonError("Missing image key", 400, origin);
-          }
-          return handleGetImage(key, request, env);
-        }
-        default:
-          return new Response("Internal error", { status: 500 });
-      }
-    } catch (err) {
-      console.error("Unhandled error:", err);
-      return jsonError("Internal server error", 500, origin);
-    }
-  },
-} satisfies ExportedHandler<Env>;
+export default app;
