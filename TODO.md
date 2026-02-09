@@ -1,3 +1,7 @@
+MANUALLY ADDED
+1. improve the "host this quiz" screen. the json should be minimized in an accordion. the "host this quiz" button should be predominan at the top. just generally make it cleaner with less unessecary fuzz. some of the stuff on there should maybe only be on the import screen for example, if you just created a quiz the likelyhood of you wanting to host another quiz is slim
+
+
 # Quiz App TODO
 
 ## 🔴 BUGS
