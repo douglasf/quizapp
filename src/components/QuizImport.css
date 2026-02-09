@@ -84,6 +84,87 @@
   line-height: 1.5;
 }
 
+/* -- Share links section -- */
+.share-links-section {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--color-success-border);
+  padding-top: 1rem;
+}
+
+.share-links-heading {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--color-success-text);
+}
+
+.share-link-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.share-link-recommended {
+  border: 1px solid var(--color-primary-dark);
+  background-color: rgba(192, 132, 252, 0.08);
+}
+
+.share-link-legacy {
+  opacity: 0.8;
+}
+
+.share-link-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.share-link-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.share-link-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  margin-left: 0.5rem;
+  background-color: var(--color-primary-dark);
+  color: #fff;
+  vertical-align: middle;
+}
+
+.share-link-badge-secondary {
+  background-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.share-link-description {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 0.25rem 0 0;
+  line-height: 1.4;
+}
+
+.share-link-option .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* -- Load from My Quizzes button -- */
+.my-quizzes-btn {
+  width: 100%;
+  margin-bottom: 0;
+}
+
 /* -- Import section -- */
 .import-section {
   margin-bottom: 2rem;
@@ -276,6 +357,16 @@
   }
 
   .fetch-btn {
+    width: 100%;
+  }
+
+  .share-link-option {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .share-link-option .btn {
     width: 100%;
   }
 }

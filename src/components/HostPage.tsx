@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useHost } from '../hooks/useHost';
 import { useGameState } from '../hooks/useGameState';
@@ -8,6 +8,8 @@ import { useFullscreen } from '../hooks/useFullscreen';
 import { useFitText } from '../hooks/useFitText';
 import * as peerManager from '../utils/peerManager';
 import { calculateScore, isAnswerCorrect } from '../utils/scoring';
+import { validateQuiz } from '../utils/quizValidator';
+import { getQuiz, ApiError } from '../utils/apiClient';
 import Avatar from './Avatar';
 import Scoreboard from './Scoreboard';
 import type { Quiz, QuestionType } from '../types/quiz';
@@ -319,6 +321,7 @@ function QuestionPhase({
  */
 function HostPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
   // Initialize PeerManager singleton (lazy — safe to call multiple times)
   const [_initialized] = useState(() => {
@@ -326,6 +329,8 @@ function HostPage() {
     return true;
   });
   const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizLoadError, setQuizLoadError] = useState<string | null>(null);
   const [showAnonymousStandingsModal, setShowAnonymousStandingsModal] = useState(false);
   const { isFullscreen, toggleFullscreen, isSupported: fullscreenSupported } = useFullscreen();
 
@@ -429,21 +434,57 @@ function HostPage() {
     };
   }, [quiz, sendToPlayer]);
 
-  // Load quiz from localStorage on mount
+  // Load quiz: from API (if quizId param present) or localStorage (fallback)
   useEffect(() => {
-    const stored = localStorage.getItem(IMPORTED_QUIZ_KEY);
-    if (!stored) {
-      navigate('/');
-      return;
+    const quizId = searchParams.get('quizId');
+
+    if (quizId) {
+      // Load from cloud API
+      setQuizLoading(true);
+      setQuizLoadError(null);
+
+      getQuiz(quizId)
+        .then(response => {
+          const quizData = response.quiz.data;
+
+          // Validate the quiz structure
+          const result = validateQuiz(quizData);
+          if (!result.valid) {
+            setQuizLoadError('Invalid quiz data from server.');
+            return;
+          }
+
+          // Store in localStorage so play-again works without re-fetching
+          localStorage.setItem(IMPORTED_QUIZ_KEY, JSON.stringify(quizData));
+          setQuiz(quizData);
+          initGame(quizData, gameCode);
+        })
+        .catch(err => {
+          if (err instanceof ApiError && err.status === 404) {
+            setQuizLoadError('Quiz not found. The link may be expired.');
+          } else if (err instanceof ApiError) {
+            setQuizLoadError(`Failed to load quiz: ${err.message}`);
+          } else {
+            setQuizLoadError('Failed to load quiz. Check your connection.');
+          }
+        })
+        .finally(() => setQuizLoading(false));
+    } else {
+      // Fallback: load from localStorage
+      const stored = localStorage.getItem(IMPORTED_QUIZ_KEY);
+      if (!stored) {
+        navigate('/');
+        return;
+      }
+      try {
+        const parsed = JSON.parse(stored) as Quiz;
+        setQuiz(parsed);
+        initGame(parsed, gameCode);
+      } catch {
+        navigate('/');
+      }
     }
-    try {
-      const parsed = JSON.parse(stored) as Quiz;
-      setQuiz(parsed);
-      initGame(parsed, gameCode);
-    } catch {
-      navigate('/');
-    }
-  }, [navigate, gameCode, initGame]);
+  }, [navigate, gameCode, initGame, searchParams]);
 
   const { joinBaseUrl, detecting: detectingIp, localIp, detectedIp, manualIp, setManualIp } = useHostUrl();
   const [ipInputValue, setIpInputValue] = useState('');
@@ -776,6 +817,50 @@ function HostPage() {
       )}
     </button>
   ) : null;
+
+  // ─── Render: Cloud Loading ───
+
+  if (quizLoading) {
+    return (
+      <div className="page host-game">
+        <div className="host-game-container" style={{ textAlign: 'center' }}>
+          <div className="spinner" style={{ margin: '2rem auto' }} />
+          <p>Loading quiz from cloud...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Render: Cloud Load Error ───
+
+  if (quizLoadError) {
+    return (
+      <div className="page host-game">
+        <div className="host-game-container" style={{ textAlign: 'center', padding: '2rem' }}>
+          <h2 style={{ color: 'var(--color-error, #e53e3e)', marginBottom: '1rem' }}>
+            Failed to Load Quiz
+          </h2>
+          <p style={{ marginBottom: '1.5rem', opacity: 0.85 }}>{quizLoadError}</p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => navigate('/')}
+            >
+              Go Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─── Render: Lobby ───
 

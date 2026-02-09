@@ -5,6 +5,8 @@ import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz'
 import { validateQuiz } from '../utils/quizValidator'
 import { compressImageFile, COMPRESS_THRESHOLD, compressAnswerImage, readFileAsDataUrl, compressImageToBlob, compressAnswerImageToBlob } from '../utils/imageCompression'
 import { checkWorkerHealth, uploadImageToR2 } from '../utils/imageUpload'
+import { useAuth } from '../hooks/useAuth'
+import { createQuiz } from '../utils/apiClient'
 import './QuizCreator.css'
 
 let questionIdCounter = 0;
@@ -91,11 +93,16 @@ type QuestionWithId = Question & { _id: number };
 
 function QuizCreator() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
 
   const [title, setTitle] = useState('')
   const [questions, setQuestions] = useState<QuestionWithId[]>([createEmptyQuestion()])
   const [errors, setErrors] = useState<string[]>([])
   const errorBoxRef = useRef<HTMLDivElement>(null)
+
+  // Cloud save state
+  const [cloudSaving, setCloudSaving] = useState(false)
+  const [cloudQuizId, setCloudQuizId] = useState<string | null>(null)
 
   // Draft string states: allow users to fully clear numeric inputs while typing.
   // null = no active draft (show model value), '' = user cleared the field.
@@ -455,7 +462,7 @@ function QuizCreator() {
     updateQuestion(qIndex, { ...q, imageOptions })
   }
 
-  function handleSave() {
+  async function handleSave() {
     const quiz: Quiz = {
       title: title.trim(),
       questions: stripIds(questions),
@@ -483,6 +490,21 @@ function QuizCreator() {
       }
       throw err
     }
+
+    // If authenticated, also save to cloud (non-blocking — localStorage is the source of truth)
+    if (isAuthenticated) {
+      setCloudSaving(true)
+      try {
+        const cloudResult = await createQuiz(quiz)
+        setCloudQuizId(cloudResult.quiz.id)
+        showNotification('info', 'Quiz saved to cloud!', 3000)
+      } catch {
+        showNotification('warning', 'Saved locally. Cloud save failed.', 5000)
+      } finally {
+        setCloudSaving(false)
+      }
+    }
+
     navigate('/import')
   }
 
@@ -493,6 +515,7 @@ function QuizCreator() {
   const optionLabels = ['A', 'B', 'C', 'D']
 
   const hasUploadsInProgress = uploadingImages.size > 0
+  const isSaveDisabled = hasUploadsInProgress || cloudSaving
 
   return (
     <div className="page quiz-creator">
@@ -1104,6 +1127,26 @@ function QuizCreator() {
           + Add Question
         </button>
 
+        {/* Cloud save indicator */}
+        {isAuthenticated && (
+          <div className="cloud-save-indicator">
+            {cloudSaving ? (
+              <>
+                <span className="upload-spinner" />
+                <span>Saving to cloud...</span>
+              </>
+            ) : cloudQuizId ? (
+              <>
+                <span className="cloud-save-checkmark">&#10003;</span>
+                <span>Saved to cloud</span>
+                <span className="cloud-quiz-id">ID: {cloudQuizId}</span>
+              </>
+            ) : (
+              <span className="cloud-save-hint">Will also save to your cloud account</span>
+            )}
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="form-actions">
           <button type="button" className="btn btn-secondary" onClick={handleCancel}>
@@ -1113,10 +1156,10 @@ function QuizCreator() {
             type="button"
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={hasUploadsInProgress}
-            title={hasUploadsInProgress ? 'Please wait for image uploads to finish' : undefined}
+            disabled={isSaveDisabled}
+            title={hasUploadsInProgress ? 'Please wait for image uploads to finish' : cloudSaving ? 'Saving to cloud...' : undefined}
           >
-            {hasUploadsInProgress ? 'Uploading...' : 'Save Quiz'}
+            {cloudSaving ? 'Saving...' : hasUploadsInProgress ? 'Uploading...' : 'Save Quiz'}
           </button>
         </div>
       </div>

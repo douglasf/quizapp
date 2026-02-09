@@ -555,3 +555,35 @@
     width: 100%;
   }
 }
+
+/* Cloud save indicator */
+.cloud-save-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+}
+
+.cloud-save-checkmark {
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.cloud-quiz-id {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.cloud-save-hint {
+  font-style: italic;
+  color: var(--color-text-muted);
+}

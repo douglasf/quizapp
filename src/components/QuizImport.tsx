@@ -5,6 +5,8 @@ import { validateQuiz } from '../utils/quizValidator'
 import { fetchQuizFromUrl } from '../utils/fetchQuiz'
 import { encodeQuizToFragment, decodeQuizFromFragment } from '../utils/quizLink'
 import { compressQuizImages } from '../utils/imageCompression'
+import { getQuiz, ApiError } from '../utils/apiClient'
+import { useAuth } from '../hooks/useAuth'
 import './QuizImport.css'
 
 const CREATED_QUIZ_KEY = 'quizapp_created_quiz'
@@ -13,12 +15,15 @@ const IMPORTED_QUIZ_KEY = 'quizapp_imported_quiz'
 function QuizImport() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { isAuthenticated } = useAuth()
   const isLoadMode = searchParams.get('mode') === 'load'
 
   // Export state — quiz that was just created
   const [createdQuiz, setCreatedQuiz] = useState<Quiz | null>(null)
+  const [createdQuizCloudId, setCreatedQuizCloudId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [shortLinkCopied, setShortLinkCopied] = useState(false)
   const [linkWarning, setLinkWarning] = useState('')
   const [linkLoading, setLinkLoading] = useState(false)
 
@@ -35,6 +40,9 @@ function QuizImport() {
   // Auto-import from ?quiz= parameter state
   const [autoImportLoading, setAutoImportLoading] = useState(false)
 
+  // Cloud loading state (for ?quizId= parameter)
+  const [cloudLoading, setCloudLoading] = useState(false)
+
   // Load created quiz from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(CREATED_QUIZ_KEY)
@@ -42,15 +50,28 @@ function QuizImport() {
       try {
         const quiz = JSON.parse(stored) as Quiz
         setCreatedQuiz(quiz)
+        // Check if this quiz has a cloud ID saved alongside it
+        const cloudId = localStorage.getItem('quizapp_created_quiz_cloud_id')
+        if (cloudId) {
+          setCreatedQuizCloudId(cloudId)
+        }
       } catch {
         // Corrupt data — ignore
         localStorage.removeItem(CREATED_QUIZ_KEY)
+        localStorage.removeItem('quizapp_created_quiz_cloud_id')
       }
     }
   }, [])
 
-  // Auto-import from ?quiz= search parameter on mount
+  // Auto-import from ?quizId= search parameter (cloud quiz)
   useEffect(() => {
+    const quizId = searchParams.get('quizId')
+    if (quizId) {
+      loadQuizFromCloud(quizId)
+      return
+    }
+
+    // Auto-import from ?quiz= search parameter (encoded quiz)
     const quizParam = searchParams.get('quiz')
     if (!quizParam) return
 
@@ -61,9 +82,59 @@ function QuizImport() {
         setErrors(['Could not decode quiz from URL. The link may be corrupted.']),
       )
       .finally(() => setAutoImportLoading(false))
-    // processImport is stable (defined in component scope, no deps change)
+    // processImport / loadQuizFromCloud are stable (defined in component scope, no deps change)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
+
+  // ── Cloud loading ──
+
+  async function loadQuizFromCloud(quizId: string) {
+    setCloudLoading(true)
+    setErrors([])
+
+    try {
+      const response = await getQuiz(quizId)
+      const quizData = response.quiz.data
+
+      // Validate the quiz
+      const result = validateQuiz(quizData)
+      if (!result.valid) {
+        setErrors(result.errors)
+        return
+      }
+
+      // Store and navigate to host
+      try {
+        localStorage.setItem(IMPORTED_QUIZ_KEY, JSON.stringify(quizData))
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+          setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
+          return
+        }
+        throw err
+      }
+      localStorage.removeItem(CREATED_QUIZ_KEY)
+      localStorage.removeItem('quizapp_created_quiz_cloud_id')
+      setImportSuccess(true)
+
+      // Small delay so user sees the success state
+      setTimeout(() => {
+        navigate('/host')
+      }, 600)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 404) {
+          setErrors(['Quiz not found. The link may be expired or incorrect.'])
+        } else {
+          setErrors([`Failed to load quiz: ${err.message}`])
+        }
+      } else {
+        setErrors(['Failed to load quiz from cloud. Please try again.'])
+      }
+    } finally {
+      setCloudLoading(false)
+    }
+  }
 
   // ── Export actions ──
 
@@ -133,7 +204,17 @@ function QuizImport() {
 
   function handleNewQuiz() {
     localStorage.removeItem(CREATED_QUIZ_KEY)
+    localStorage.removeItem('quizapp_created_quiz_cloud_id')
     navigate('/create')
+  }
+
+  function handleShareShortLink() {
+    if (!createdQuizCloudId) return
+    const shortUrl = `${window.location.origin}/quizapp/#/q/${createdQuizCloudId}`
+    navigator.clipboard.writeText(shortUrl).then(() => {
+      setShortLinkCopied(true)
+      setTimeout(() => setShortLinkCopied(false), 2000)
+    })
   }
 
   function handleHostCreatedQuiz() {
@@ -149,6 +230,7 @@ function QuizImport() {
       throw err
     }
     localStorage.removeItem(CREATED_QUIZ_KEY)
+    localStorage.removeItem('quizapp_created_quiz_cloud_id')
     navigate('/host')
   }
 
@@ -298,18 +380,58 @@ function QuizImport() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={handleShareAsLink}
-                disabled={linkLoading}
-              >
-                {linkLoading ? 'Sharing...' : linkCopied ? 'Link Copied!' : 'Share as Link'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
                 onClick={handleNewQuiz}
               >
                 Create New Quiz
               </button>
+            </div>
+
+            {/* Share link options */}
+            <div className="share-links-section">
+              <h3 className="share-links-heading">Share Links</h3>
+
+              {createdQuizCloudId && (
+                <div className="share-link-option share-link-recommended">
+                  <div className="share-link-info">
+                    <span className="share-link-label">Short link</span>
+                    <span className="share-link-badge">Recommended</span>
+                    <p className="share-link-description">
+                      Clean, short URL. Works as long as the quiz is stored in the cloud.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={handleShareShortLink}
+                  >
+                    {shortLinkCopied ? 'Copied!' : 'Copy Short Link'}
+                  </button>
+                </div>
+              )}
+
+              <div className={`share-link-option${createdQuizCloudId ? ' share-link-legacy' : ''}`}>
+                <div className="share-link-info">
+                  <span className="share-link-label">
+                    {createdQuizCloudId ? 'Full link' : 'Share as Link'}
+                  </span>
+                  {createdQuizCloudId && (
+                    <span className="share-link-badge share-link-badge-secondary">Legacy</span>
+                  )}
+                  <p className="share-link-description">
+                    {createdQuizCloudId
+                      ? 'Encodes the entire quiz in the URL. Large but works offline.'
+                      : 'Encodes the entire quiz in the URL so others can import it directly.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleShareAsLink}
+                  disabled={linkLoading}
+                >
+                  {linkLoading ? 'Sharing...' : linkCopied ? 'Copied!' : 'Copy Full Link'}
+                </button>
+              </div>
             </div>
 
             {linkWarning && (
@@ -329,6 +451,13 @@ function QuizImport() {
               : <>Paste quiz JSON below or upload a <code>.json</code> file.</>
             }
           </p>
+
+          {/* Cloud loading state */}
+          {cloudLoading && (
+            <div className="success-box" role="status">
+              Loading quiz from cloud...
+            </div>
+          )}
 
           {/* Auto-import loading state */}
           {autoImportLoading && (
@@ -354,6 +483,23 @@ function QuizImport() {
             <output className="success-box">
               Quiz imported successfully! Redirecting to host lobby...
             </output>
+          )}
+
+          {/* Load from My Quizzes — only shown to authenticated users */}
+          {isAuthenticated && (
+            <>
+              <button
+                type="button"
+                className="btn btn-primary my-quizzes-btn"
+                onClick={() => navigate('/my-quizzes')}
+              >
+                Load from My Quizzes
+              </button>
+
+              <div className="import-divider">
+                <hr /><span>or</span><hr />
+              </div>
+            </>
           )}
 
           {/* URL import */}
