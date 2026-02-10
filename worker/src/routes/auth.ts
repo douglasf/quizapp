@@ -77,6 +77,9 @@ function isLocalDev(origin: string | undefined): boolean {
  *
  * In local development (localhost) we omit the `Secure` flag so cookies work
  * over plain HTTP, and use `SameSite=Lax` so cross-port requests succeed.
+ *
+ * In production we use `SameSite=None; Secure` so the cookie is sent on
+ * cross-origin requests from the SPA (GitHub Pages) to the API (Workers).
  */
 function buildRefreshCookie(token: string, maxAgeSec: number, origin: string | undefined): string {
   const secure = !isLocalDev(origin);
@@ -84,7 +87,7 @@ function buildRefreshCookie(token: string, maxAgeSec: number, origin: string | u
     `${REFRESH_COOKIE_NAME}=${token}`,
     "HttpOnly",
     ...(secure ? ["Secure"] : []),
-    `SameSite=${secure ? "Strict" : "Lax"}`,
+    `SameSite=${secure ? "None" : "Lax"}`,
     "Path=/api/auth",
     `Max-Age=${maxAgeSec}`,
   ];
@@ -100,7 +103,7 @@ function clearRefreshCookie(origin: string | undefined): string {
     `${REFRESH_COOKIE_NAME}=`,
     "HttpOnly",
     ...(secure ? ["Secure"] : []),
-    `SameSite=${secure ? "Strict" : "Lax"}`,
+    `SameSite=${secure ? "None" : "Lax"}`,
     "Path=/api/auth",
     "Max-Age=0",
   ];
