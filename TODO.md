@@ -1,7 +1,3 @@
-MANUALLY ADDED
-1. improve the "host this quiz" screen. the json should be minimized in an accordion. the "host this quiz" button should be predominan at the top. just generally make it cleaner with less unessecary fuzz. some of the stuff on there should maybe only be on the import screen for example, if you just created a quiz the likelyhood of you wanting to host another quiz is slim
-
-
 # Quiz App TODO
 
 ## 🔴 BUGS
@@ -31,6 +27,17 @@ MANUALLY ADDED
   - **Problem**: The current compression settings were tuned aggressively to keep payload sizes small for P2P transfer, but the resulting image quality is noticeably poor — especially for detailed images like maps, flags, or photos
   - **Why it matters**: Image-based questions (flags, landmarks, etc.) rely on visual clarity. Over-compressed images make questions harder to read and reduce quiz quality
   - **Scope**: Small — adjust quality/resolution parameters in the image compression utility. May want to A/B test a few quality levels to find the right balance between clarity and transfer size
+
+### Streamline "Host This Quiz" Screen UX
+- [ ] **Simplify and declutter the "host this quiz" screen layout**
+  - **Problem**: The screen shown after creating a quiz is cluttered and unfocused. The raw quiz JSON is displayed prominently, the "Host This Quiz" button is buried among other controls, and the screen includes elements (like import-related options) that aren't relevant when the user just finished creating a quiz
+  - **Why it matters**: After creating a quiz, the user's primary intent is to host it immediately — the current layout adds friction by forcing them to scan past irrelevant information. A cleaner post-creation flow improves the transition from "build" to "play" and makes the app feel more polished
+  - **Specific improvements**:
+    - [ ] Collapse the quiz JSON into an accordion (closed by default) — useful for debugging but shouldn't dominate the screen
+    - [ ] Make the "Host This Quiz" button large and prominent at the top of the screen — this is the primary action
+    - [ ] Move controls that only make sense for importing (e.g., loading a different quiz) to the import screen instead
+    - [ ] Remove or de-emphasize any other low-priority UI elements to reduce visual noise
+  - **Scope**: Small to medium — primarily layout and component reorganization. May involve splitting shared state between the host-quiz and import-quiz screens
 
 ---
 
