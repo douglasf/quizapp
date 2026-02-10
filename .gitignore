@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+worker/.wrangler/
 
 # Environment files with real values (keep .env.example as template)
 .env
