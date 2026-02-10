@@ -14,16 +14,7 @@ _No pending chores._
 
 ## 🟠 ENHANCEMENTS
 
-### Streamline "Host This Quiz" Screen UX
-- [ ] **Simplify and declutter the "host this quiz" screen layout**
-  - **Problem**: The screen shown after creating a quiz is cluttered and unfocused. The raw quiz JSON is displayed prominently, the "Host This Quiz" button is buried among other controls, and the screen includes elements (like import-related options) that aren't relevant when the user just finished creating a quiz
-  - **Why it matters**: After creating a quiz, the user's primary intent is to host it immediately — the current layout adds friction by forcing them to scan past irrelevant information. A cleaner post-creation flow improves the transition from "build" to "play" and makes the app feel more polished
-  - **Specific improvements**:
-    - [ ] Collapse the quiz JSON into an accordion (closed by default) — useful for debugging but shouldn't dominate the screen
-    - [ ] Make the "Host This Quiz" button large and prominent at the top of the screen — this is the primary action
-    - [ ] Move controls that only make sense for importing (e.g., loading a different quiz) to the import screen instead
-    - [ ] Remove or de-emphasize any other low-priority UI elements to reduce visual noise
-  - **Scope**: Small to medium — primarily layout and component reorganization. May involve splitting shared state between the host-quiz and import-quiz screens
+_No pending enhancements._
 
 ---
 
@@ -73,6 +64,18 @@ _No pending chores._
 - [x] Multi-choice scoring formula (base + penalty - wrong answers + speed bonus + perfect bonus)
 - [x] Answer validation and reveal system
 - [x] Player scoring and leaderboard
+
+### Streamline "Host This Quiz" Screen UX
+- [x] **Simplify and declutter the "host this quiz" screen layout**
+  - **Problem**: The screen shown after creating a quiz is cluttered and unfocused. The raw quiz JSON is displayed prominently, the "Host This Quiz" button is buried among other controls, and the screen includes elements (like import-related options) that aren't relevant when the user just finished creating a quiz
+  - **Why it matters**: After creating a quiz, the user's primary intent is to host it immediately — the current layout adds friction by forcing them to scan past irrelevant information. A cleaner post-creation flow improves the transition from "build" to "play" and makes the app feel more polished
+  - **Specific improvements**:
+    - [x] Collapse the quiz JSON into an accordion (closed by default) — useful for debugging but shouldn't dominate the screen
+    - [x] Make the "Host This Quiz" button large and prominent at the top of the screen — this is the primary action
+    - [x] Move controls that only make sense for importing (e.g., loading a different quiz) to the import screen instead
+    - [x] Remove or de-emphasize any other low-priority UI elements to reduce visual noise
+  - **Scope**: Small to medium — primarily layout and component reorganization. May involve splitting shared state between the host-quiz and import-quiz screens
+  - **Completed in**: Commit `d165198`
 
 ### UI/UX & Polish
 - [x] Landscape layout for TV projection (2-column grid)
