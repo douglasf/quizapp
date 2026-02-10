@@ -15,6 +15,7 @@ dist-ssr
 # Environment files with real values (keep .env.example as template)
 .env
 .env.production
+.dev.vars
 
 # Editor directories and files
 .vscode/*

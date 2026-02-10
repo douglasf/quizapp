@@ -66,31 +66,45 @@ async function hashToken(token: string): Promise<string> {
 }
 
 /**
- * Build a Set-Cookie header value for the refresh token.
+ * Determine whether the request originates from localhost (local dev).
  */
-function buildRefreshCookie(token: string, maxAgeSec: number): string {
-  return [
+function isLocalDev(origin: string | undefined): boolean {
+  return origin?.includes("localhost") === true || origin?.includes("127.0.0.1") === true;
+}
+
+/**
+ * Build a Set-Cookie header value for the refresh token.
+ *
+ * In local development (localhost) we omit the `Secure` flag so cookies work
+ * over plain HTTP, and use `SameSite=Lax` so cross-port requests succeed.
+ */
+function buildRefreshCookie(token: string, maxAgeSec: number, origin: string | undefined): string {
+  const secure = !isLocalDev(origin);
+  const parts = [
     `${REFRESH_COOKIE_NAME}=${token}`,
     "HttpOnly",
-    "Secure",
-    "SameSite=Strict",
+    ...(secure ? ["Secure"] : []),
+    `SameSite=${secure ? "Strict" : "Lax"}`,
     "Path=/api/auth",
     `Max-Age=${maxAgeSec}`,
-  ].join("; ");
+  ];
+  return parts.join("; ");
 }
 
 /**
  * Build a Set-Cookie header that clears the refresh cookie.
  */
-function clearRefreshCookie(): string {
-  return [
+function clearRefreshCookie(origin: string | undefined): string {
+  const secure = !isLocalDev(origin);
+  const parts = [
     `${REFRESH_COOKIE_NAME}=`,
     "HttpOnly",
-    "Secure",
-    "SameSite=Strict",
+    ...(secure ? ["Secure"] : []),
+    `SameSite=${secure ? "Strict" : "Lax"}`,
     "Path=/api/auth",
     "Max-Age=0",
-  ].join("; ");
+  ];
+  return parts.join("; ");
 }
 
 /**
@@ -183,7 +197,7 @@ auth.post(
       },
       201,
       {
-        "Set-Cookie": buildRefreshCookie(refreshToken, maxAge),
+        "Set-Cookie": buildRefreshCookie(refreshToken, maxAge, c.req.header("origin")),
       },
     );
   },
@@ -236,7 +250,7 @@ auth.post(
       },
       200,
       {
-        "Set-Cookie": buildRefreshCookie(refreshToken, maxAge),
+        "Set-Cookie": buildRefreshCookie(refreshToken, maxAge, c.req.header("origin")),
       },
     );
   },
@@ -246,6 +260,7 @@ auth.post(
 
 auth.post("/refresh", async (c) => {
   const cookieHeader = c.req.header("Cookie");
+  const origin = c.req.header("origin");
   const rawToken = getCookie(cookieHeader, REFRESH_COOKIE_NAME);
 
   if (!rawToken) {
@@ -264,7 +279,7 @@ auth.post("/refresh", async (c) => {
   if (!storedToken) {
     // Clear the cookie since the token is invalid
     return c.json({ error: "Invalid refresh token" }, 401, {
-      "Set-Cookie": clearRefreshCookie(),
+      "Set-Cookie": clearRefreshCookie(origin),
     });
   }
 
@@ -275,7 +290,7 @@ auth.post("/refresh", async (c) => {
       .bind(storedToken.id)
       .run();
     return c.json({ error: "Refresh token has expired" }, 401, {
-      "Set-Cookie": clearRefreshCookie(),
+      "Set-Cookie": clearRefreshCookie(origin),
     });
   }
 
@@ -293,7 +308,7 @@ auth.post("/refresh", async (c) => {
 
   if (!user) {
     return c.json({ error: "User not found" }, 401, {
-      "Set-Cookie": clearRefreshCookie(),
+      "Set-Cookie": clearRefreshCookie(origin),
     });
   }
 
@@ -314,7 +329,7 @@ auth.post("/refresh", async (c) => {
     },
     200,
     {
-      "Set-Cookie": buildRefreshCookie(newRefreshToken, maxAge),
+      "Set-Cookie": buildRefreshCookie(newRefreshToken, maxAge, origin),
     },
   );
 });
@@ -334,7 +349,7 @@ auth.post("/logout", async (c) => {
   }
 
   return c.body(null, 204, {
-    "Set-Cookie": clearRefreshCookie(),
+    "Set-Cookie": clearRefreshCookie(c.req.header("origin")),
   });
 });
 
