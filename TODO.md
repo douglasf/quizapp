@@ -14,17 +14,17 @@ _No pending chores._
 
 ## 🟠 ENHANCEMENTS
 
-_No pending enhancements._
+### Create Schema JSON File for the Quiz Format
+- [ ] **Define a `schema.json` file that formally describes the quiz data format**
+  - **Problem**: The quiz JSON structure is implicit — it exists only in code (TypeScript types and API handlers). There is no standalone, language-agnostic schema that documents valid quiz structure, required fields, allowed question types, or value constraints
+  - **Why it matters**: A formal schema enables editor autocomplete when hand-crafting quizzes, automated validation of imported quiz files before they hit the API, and serves as living documentation for the quiz format. It also makes it easier for others (or future tooling) to produce valid quiz data without reading the source code
+  - **Scope**: Small — author a JSON Schema file covering the quiz structure (questions, options, question types, images, metadata). Optionally integrate it into the import flow for client-side validation before upload
 
 ---
 
 ## 🔵 FEATURES
 
-### Defer Image Upload to Quiz Creation Time
-- [ ] **Upload images to Cloudflare on quiz save/create, not immediately on selection**
-  - **Problem**: Currently, images are uploaded to Cloudflare the moment the user selects them in the quiz editor. If the user abandons the quiz or swaps images, orphaned uploads accumulate in Cloudflare storage with no cleanup
-  - **Why it matters**: Wastes Cloudflare storage and API calls on images that may never be used. Also makes the editor feel slower since each image selection triggers a network request
-  - **Scope**: Medium — requires buffering selected images locally (as base64 or blobs) during editing, then batch-uploading on save. Need to update the create/save flow and handle upload failures gracefully
+_No pending features._
 
 ---
 
@@ -35,6 +35,7 @@ _No pending enhancements._
 - [x] "My Quizzes" dashboard — view, manage, and launch saved quizzes
 - [x] Cloud save — quizzes persisted to Cloudflare D1 database
 - [x] Quiz sharing via unique share codes
+- [x] **Stay logged in on device** — hosts now persist sessions across page refreshes and browser restarts without re-entering credentials. Fixed cross-site `SameSite` cookie policy (`Strict` → `None; Secure`) so refresh tokens are actually sent in the cross-origin production deployment, added proactive token refresh (on tab focus and before expiry) to eliminate 401-induced delays, and ensured the logout action fully clears the session with a visible logged-out state
 
 ### Images & Media
 - [x] Cloudflare R2 integration for image storage
@@ -42,6 +43,12 @@ _No pending enhancements._
 - [x] **Reduce image compression aggressiveness** — improved quality for maps, flags, and photos _(Fixed in commit 971938f: adjusted compression parameters to balance clarity and transfer size)_
 - [x] Question images (base64 upload, compression, host-only display)
 - [x] Image-based answer options (visual identification questions — flags, landmarks, etc.)
+
+### Defer Image Upload to Quiz Creation Time
+- [x] **Upload images to Cloudflare on quiz save/create, not immediately on selection**
+  - **Problem**: Previously, images were uploaded to Cloudflare the moment the user selected them in the quiz editor. If the user abandoned the quiz or swapped images, orphaned uploads accumulated in Cloudflare storage with no cleanup
+  - **Why it matters**: Wastes Cloudflare storage and API calls on images that may never be used. Also makes the editor feel slower since each image selection triggers a network request
+  - **Scope**: Medium — required buffering selected images locally (as base64 or blobs) during editing, then batch-uploading on save. Updated the create/save flow and handled upload failures gracefully
 
 ### Architecture & Infrastructure
 - [x] PeerManager singleton (peer lifecycle independent of React lifecycle)
@@ -134,10 +141,10 @@ _No pending enhancements._
 - **Module-level singletons**: Game code caching (no React state)
 - **useCallback with stable refs**: Avoid unnecessary re-renders in game logic
 - **HashRouter**: Ensures client-side routing works on GitHub Pages (no server-side rewrites)
-- **JWT auth flow**: Token stored in localStorage, attached to API requests for authenticated endpoints
+- **JWT auth flow**: Access token stored in memory; refresh token in httpOnly cookie
 
 ### Known Limitations
 - Question options limited to flexible count (multi-choice supports 2-8)
 - No built-in error boundaries (would benefit from adding one)
 - Player peer not yet a singleton (could eliminate `get_state` protocol)
-- Image uploads happen eagerly on selection (orphaned uploads possible — see FEATURES backlog)
+- Image uploads deferred to quiz save (orphaned uploads eliminated — see COMPLETED section)
