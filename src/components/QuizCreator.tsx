@@ -91,6 +91,13 @@ function stripIds(questions: (Question & { _id?: number })[]): Question[] {
 
 type QuestionWithId = Question & { _id: number };
 
+/** Check whether a URL is a temporary blob: object URL (pending upload).
+ *  Used to distinguish buffered previews from already-uploaded R2 HTTPS URLs
+ *  or inline data: URLs.  (see .opencode/plans/defer-image-upload.md §5.4) */
+function isBlobUrl(url: string | undefined): boolean {
+  return typeof url === 'string' && url.startsWith('blob:')
+}
+
 function QuizCreator() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -109,6 +116,8 @@ function QuizCreator() {
   // Cloud save state
   const [cloudSaving, setCloudSaving] = useState(false)
   const [cloudQuizId, setCloudQuizId] = useState<string | null>(null)
+  // Tracks whether handleSave is currently in the deferred image upload phase
+  const [uploadingDeferredImages, setUploadingDeferredImages] = useState(false)
 
   // Draft string states: allow users to fully clear numeric inputs while typing.
   // null = no active draft (show model value), '' = user cleared the field.
@@ -132,10 +141,18 @@ function QuizCreator() {
   // Cloud upload state
   const [imageStorageMode, setImageStorageMode] = useState<'cloud' | 'inline'>('cloud')
   const [workerAvailable, setWorkerAvailable] = useState<boolean | null>(null) // null = checking
-  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set())
   // Notification messages for upload feedback
   const [notification, setNotification] = useState<{ type: 'info' | 'warning' | 'error'; message: string } | null>(null)
   const notificationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // -- Deferred image upload refs (see .opencode/plans/defer-image-upload.md §5.1) --
+  // Stores compressed Blobs waiting to be uploaded at save time.
+  // Key format: "q-<question._id>" for question images,
+  //             "a-<question._id>-<optionIndex>" for answer images.
+  const pendingImages = useRef<Map<string, Blob>>(new Map())
+  // Tracks object URLs created via URL.createObjectURL() so we can revoke them
+  // on replace, remove, or unmount to prevent memory leaks.
+  const objectUrls = useRef<Map<string, string>>(new Map())
 
   const showNotification = useCallback((type: 'info' | 'warning' | 'error', message: string, durationMs = 5000) => {
     if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current)
@@ -160,6 +177,21 @@ function QuizCreator() {
   useEffect(() => {
     return () => {
       if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current)
+    }
+  }, [])
+
+  // Cleanup deferred-upload object URLs on unmount to prevent memory leaks
+  // (see .opencode/plans/defer-image-upload.md §5.6)
+  useEffect(() => {
+    // Capture refs for the cleanup closure
+    const objUrls = objectUrls
+    const pending = pendingImages
+    return () => {
+      for (const url of objUrls.current.values()) {
+        URL.revokeObjectURL(url)
+      }
+      objUrls.current.clear()
+      pending.current.clear()
     }
   }, [])
 
@@ -364,6 +396,34 @@ function QuizCreator() {
 
   function removeQuestion(index: number) {
     if (questions.length <= 1) return
+
+    // Step 5: Clean up any pending image buffers for the removed question.
+    // Keys use the stable `_id` so this works regardless of current index order.
+    // (see .opencode/plans/defer-image-upload.md §5.8 / §6 Step 5)
+    const removedQuestion = questions[index]
+    const qKey = `q-${removedQuestion._id}`
+
+    // Clean up the question-level image buffer
+    pendingImages.current.delete(qKey)
+    const qObjUrl = objectUrls.current.get(qKey)
+    if (qObjUrl) {
+      URL.revokeObjectURL(qObjUrl)
+      objectUrls.current.delete(qKey)
+    }
+
+    // Clean up any answer-level image buffers (one per imageOptions slot)
+    if (Array.isArray(removedQuestion.imageOptions)) {
+      for (let optIndex = 0; optIndex < removedQuestion.imageOptions.length; optIndex++) {
+        const aKey = `a-${removedQuestion._id}-${optIndex}`
+        pendingImages.current.delete(aKey)
+        const aObjUrl = objectUrls.current.get(aKey)
+        if (aObjUrl) {
+          URL.revokeObjectURL(aObjUrl)
+          objectUrls.current.delete(aKey)
+        }
+      }
+    }
+
     setQuestions((prev) => prev.filter((_, i) => i !== index))
   }
 
@@ -379,51 +439,36 @@ function QuizCreator() {
     })
   }
 
-  // Helper to add/remove keys from the uploadingImages set
-  function addUploadingImage(key: string) {
-    setUploadingImages(prev => new Set(prev).add(key))
-  }
-  function removeUploadingImage(key: string) {
-    setUploadingImages(prev => {
-      const next = new Set(prev)
-      next.delete(key)
-      return next
-    })
-  }
-
   async function handleImageUpload(index: number, file: File) {
-    const uploadKey = `question-${index}`
-
     if (imageStorageMode === 'cloud') {
-      // Cloud mode: compress to blob → upload to R2 → store URL
-      addUploadingImage(uploadKey)
+      // Cloud mode: compress to blob → buffer locally for deferred upload at save time
+      // (see .opencode/plans/defer-image-upload.md §6 Step 2)
+      setCompressingImage(index)
       try {
         const blob = await compressImageToBlob(file)
-        const result = await uploadImageToR2(blob)
-        if (result.success) {
-          const q = questions[index]
-          updateQuestion(index, { ...q, image: result.url })
-          showNotification('info', 'Image uploaded to CDN successfully')
-        } else {
-          // Fallback to inline base64
-          console.warn('[CloudUpload] Upload failed, falling back to inline:', result.error)
-          showNotification('warning', `Cloud upload failed — saved inline instead. ${result.error}`)
-          const dataUrl = await compressImageFile(file)
-          const q = questions[index]
-          updateQuestion(index, { ...q, image: dataUrl })
+        const q = questions[index]
+        const key = `q-${q._id}`
+
+        // Revoke any previously created object URL for this question image
+        const existingUrl = objectUrls.current.get(key)
+        if (existingUrl) {
+          URL.revokeObjectURL(existingUrl)
         }
+
+        // Create a new object URL for instant preview
+        const previewUrl = URL.createObjectURL(blob)
+
+        // Store the blob for later upload and track the object URL
+        pendingImages.current.set(key, blob)
+        objectUrls.current.set(key, previewUrl)
+
+        // Update question state with the preview URL
+        updateQuestion(index, { ...q, image: previewUrl })
       } catch {
-        // Fallback to inline base64
-        showNotification('warning', 'Cloud upload failed — saved inline instead.')
-        try {
-          const dataUrl = await compressImageFile(file)
-          const q = questions[index]
-          updateQuestion(index, { ...q, image: dataUrl })
-        } catch {
-          // Both paths failed — silently fail
-        }
+        // Compression failed — silently fail (no upload to fall back to in deferred mode)
+        showNotification('warning', 'Image compression failed. Please try a different image.')
       } finally {
-        removeUploadingImage(uploadKey)
+        setCompressingImage(null)
       }
     } else {
       // Inline mode: existing base64 flow
@@ -443,6 +488,15 @@ function QuizCreator() {
 
   function removeImage(index: number) {
     const q = questions[index]
+    // Clean up any pending deferred upload for this question image
+    // (see .opencode/plans/defer-image-upload.md §6 Step 4)
+    const key = `q-${q._id}`
+    pendingImages.current.delete(key)
+    const objUrl = objectUrls.current.get(key)
+    if (objUrl) {
+      URL.revokeObjectURL(objUrl)
+      objectUrls.current.delete(key)
+    }
     updateQuestion(index, { ...q, image: undefined })
   }
 
@@ -477,43 +531,38 @@ function QuizCreator() {
     const key = `${qIndex}-${optIndex}`
 
     if (imageStorageMode === 'cloud') {
-      // Cloud mode: compress to blob → upload to R2 → store URL
-      addUploadingImage(`answer-${key}`)
+      // Cloud mode: compress to blob → buffer locally for deferred upload at save time
+      // (see .opencode/plans/defer-image-upload.md §6 Step 3)
+      setCompressingAnswerImage(key)
       try {
         const blob = await compressAnswerImageToBlob(file)
-        const result = await uploadImageToR2(blob)
-        if (result.success) {
-          const q = questions[qIndex]
-          const imageOptions = [...(q.imageOptions ?? [])]
-          imageOptions[optIndex] = result.url
-          updateQuestion(qIndex, { ...q, imageOptions })
-          showNotification('info', 'Answer image uploaded to CDN')
-        } else {
-          // Fallback to inline base64
-          console.warn('[CloudUpload] Answer upload failed, falling back to inline:', result.error)
-          showNotification('warning', `Cloud upload failed — saved inline instead. ${result.error}`)
-          const dataUrl = await readFileAsDataUrl(file)
-          const compressed = await compressAnswerImage(dataUrl)
-          const q = questions[qIndex]
-          const imageOptions = [...(q.imageOptions ?? [])]
-          imageOptions[optIndex] = compressed
-          updateQuestion(qIndex, { ...q, imageOptions })
+        const q = questions[qIndex]
+
+        // Use stable _id-based key so reordering questions doesn't invalidate pending entries
+        const bufferKey = `a-${q._id}-${optIndex}`
+
+        // Revoke any previously created object URL for this answer image slot
+        const existingUrl = objectUrls.current.get(bufferKey)
+        if (existingUrl) {
+          URL.revokeObjectURL(existingUrl)
         }
+
+        // Create a new object URL for instant preview
+        const previewUrl = URL.createObjectURL(blob)
+
+        // Store the blob for later upload and track the object URL
+        pendingImages.current.set(bufferKey, blob)
+        objectUrls.current.set(bufferKey, previewUrl)
+
+        // Update question state with the preview URL
+        const imageOptions = [...(q.imageOptions ?? [])]
+        imageOptions[optIndex] = previewUrl
+        updateQuestion(qIndex, { ...q, imageOptions })
       } catch {
-        // Fallback to inline base64
-        showNotification('warning', 'Cloud upload failed — saved inline instead.')
-        try {
-          const dataUrl = await readFileAsDataUrl(file)
-          const compressed = await compressAnswerImage(dataUrl)
-          const q = questions[qIndex]
-          const imageOptions = [...(q.imageOptions ?? [])]
-          imageOptions[optIndex] = compressed
-          updateQuestion(qIndex, { ...q, imageOptions })
-        } catch {
-          // Both paths failed
-        }
+        // Compression failed — notify user (no immediate upload to fall back to in deferred mode)
+        showNotification('warning', 'Answer image compression failed. Please try a different image.')
       } finally {
-        removeUploadingImage(`answer-${key}`)
+        setCompressingAnswerImage(null)
       }
     } else {
       // Inline mode: existing base64 flow
@@ -535,27 +584,156 @@ function QuizCreator() {
 
   function removeAnswerImage(qIndex: number, optIndex: number) {
     const q = questions[qIndex]
+    // Clean up any pending deferred upload for this answer image slot
+    // (see .opencode/plans/defer-image-upload.md §6 Step 4)
+    const key = `a-${q._id}-${optIndex}`
+    pendingImages.current.delete(key)
+    const objUrl = objectUrls.current.get(key)
+    if (objUrl) {
+      URL.revokeObjectURL(objUrl)
+      objectUrls.current.delete(key)
+    }
     const imageOptions = [...(q.imageOptions ?? [])]
     imageOptions[optIndex] = ''
     updateQuestion(qIndex, { ...q, imageOptions })
   }
 
   async function handleSave() {
+    // ─── Step 6: Deferred image upload phase ───────────────────────────────
+    // When in cloud mode with buffered images, upload all pending Blobs to R2
+    // *before* validation so that blob: URLs are replaced with HTTPS URLs.
+    // (see .opencode/plans/defer-image-upload.md §5.5 / §6 Step 6)
+    // ────────────────────────────────────────────────────────────────────────
+
+    let finalQuestions: QuestionWithId[] = questions
+
+    if (imageStorageMode === 'cloud' && pendingImages.current.size > 0) {
+      setUploadingDeferredImages(true)
+
+      const entries = Array.from(pendingImages.current.entries())
+      const totalCount = entries.length
+
+      // Show initial upload progress
+      showNotification('info', `Uploading images (0 / ${totalCount})...`, 60_000)
+
+      // Build a lookup from question _id → current index for efficient patching
+      const idToIndex = new Map<number, number>()
+      for (let i = 0; i < questions.length; i++) {
+        idToIndex.set(questions[i]._id, i)
+      }
+
+      // Upload all pending images in parallel via Promise.allSettled
+      let uploadedCount = 0
+      const results = await Promise.allSettled(
+        entries.map(async ([key, blob]) => {
+          const result = await uploadImageToR2(blob)
+          if (result.success) {
+            // Update progress notification after each successful upload
+            uploadedCount++
+            showNotification('info', `Uploading images (${uploadedCount} / ${totalCount})...`, 60_000)
+            return { key, url: result.url }
+          }
+          throw new Error(result.error)
+        })
+      )
+
+      // Process results: replace blob: URLs with HTTPS URLs in a copy of questions.
+      // We use isBlobUrl() (§5.4) to defensively verify the current value is a
+      // pending preview before overwriting — already-uploaded HTTPS URLs should
+      // never be in pendingImages, but this guards against accidental overwrites.
+      const updatedQuestions: QuestionWithId[] = questions.map(q => ({ ...q }))
+      const uploadErrors: string[] = []
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i]
+        const [key] = entries[i]
+
+        if (result.status === 'fulfilled') {
+          const { url } = result.value
+
+          // Parse the key to determine which question/option to update.
+          // Keys use stable _id values: "q-<_id>" or "a-<_id>-<optIndex>"
+          if (key.startsWith('q-')) {
+            const qId = Number.parseInt(key.slice(2), 10)
+            const qIdx = idToIndex.get(qId)
+            if (qIdx !== undefined && isBlobUrl(updatedQuestions[qIdx].image)) {
+              updatedQuestions[qIdx] = { ...updatedQuestions[qIdx], image: url }
+            }
+          } else if (key.startsWith('a-')) {
+            const parts = key.split('-')
+            const qId = Number.parseInt(parts[1], 10)
+            const optIdx = Number.parseInt(parts[2], 10)
+            const qIdx = idToIndex.get(qId)
+            if (qIdx !== undefined) {
+              const imageOptions = [...(updatedQuestions[qIdx].imageOptions ?? [])]
+              if (isBlobUrl(imageOptions[optIdx])) {
+                imageOptions[optIdx] = url
+              }
+              updatedQuestions[qIdx] = { ...updatedQuestions[qIdx], imageOptions }
+            }
+          }
+
+          // Cleanup: remove from pending buffer and revoke the object URL
+          pendingImages.current.delete(key)
+          const objUrl = objectUrls.current.get(key)
+          if (objUrl) {
+            URL.revokeObjectURL(objUrl)
+            objectUrls.current.delete(key)
+          }
+        } else {
+          // Collect the error message for display
+          const reason = result.reason instanceof Error ? result.reason.message : String(result.reason)
+          uploadErrors.push(`Image upload failed (${key}): ${reason}`)
+        }
+      }
+
+      // If any uploads failed, abort save and show errors to the user
+      if (uploadErrors.length > 0) {
+        setErrors([
+          'Some images failed to upload:',
+          ...uploadErrors,
+          'Please try again or switch to inline image mode.',
+        ])
+        errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setUploadingDeferredImages(false)
+        // Dismiss the progress notification
+        setNotification(null)
+        return
+      }
+
+      // All uploads succeeded — update React state so the UI reflects HTTPS URLs
+      // and use the updatedQuestions directly (don't wait for re-render).
+      setQuestions(updatedQuestions)
+      finalQuestions = updatedQuestions
+
+      // Dismiss upload progress notification
+      setNotification(null)
+
+      // Upload phase is done; the save phase below will set cloudSaving as needed.
+      setUploadingDeferredImages(false)
+    }
+
+    // ─── Phase 2: Build quiz object and validate ─────────────────────────
+    // Validation runs *after* uploads so all image URLs are proper HTTPS
+    // (blob: URLs would fail the validator's HTTPS pattern check).
+
     const quiz: Quiz = {
       title: title.trim(),
-      questions: stripIds(questions),
+      questions: stripIds(finalQuestions),
       createdAt: new Date().toISOString(),
     }
 
     const result = validateQuiz(quiz)
     if (!result.valid) {
       setErrors(result.errors)
-      // Scroll to error box
       errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setCloudSaving(false)
       return
     }
 
     setErrors([])
+
+    // ─── Phase 3: Persist quiz (edit or create) ──────────────────────────
 
     if (editingQuizId) {
       // ----- Edit mode: call updateQuiz -----
@@ -590,6 +768,7 @@ function QuizCreator() {
         if (err instanceof DOMException && err.name === 'QuotaExceededError') {
           setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
           errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          setCloudSaving(false)
           return
         }
         throw err
@@ -623,8 +802,7 @@ function QuizCreator() {
 
   const optionLabels = ['A', 'B', 'C', 'D']
 
-  const hasUploadsInProgress = uploadingImages.size > 0
-  const isSaveDisabled = hasUploadsInProgress || cloudSaving || editLoading
+  const isSaveDisabled = uploadingDeferredImages || cloudSaving || editLoading
 
   // Edit mode: show loading spinner while fetching quiz data
   if (editLoading) {
@@ -825,11 +1003,6 @@ function QuizCreator() {
                     >
                       Remove image
                     </button>
-                  </div>
-                ) : uploadingImages.has(`question-${qIndex}`) ? (
-                  <div className="upload-progress-indicator">
-                    <span className="upload-spinner" />
-                    <span>Uploading to CDN...</span>
                   </div>
                 ) : (
                   <>
@@ -1101,11 +1274,6 @@ function QuizCreator() {
                                 Replace
                               </button>
                             </div>
-                          ) : uploadingImages.has(`answer-${qIndex}-${oIndex}`) ? (
-                            <div className="upload-progress-indicator">
-                              <span className="upload-spinner" />
-                              <span>Uploading...</span>
-                            </div>
                           ) : (
                             <div className="answer-image-dropzone">
                               <input
@@ -1199,11 +1367,6 @@ function QuizCreator() {
                                   Replace
                                 </button>
                               </div>
-                            ) : uploadingImages.has(`answer-${qIndex}-${oIndex}`) ? (
-                              <div className="upload-progress-indicator">
-                                <span className="upload-spinner" />
-                                <span>Uploading...</span>
-                              </div>
                             ) : (
                               <div className="answer-image-dropzone">
                                 <input
@@ -1288,7 +1451,12 @@ function QuizCreator() {
         {/* Cloud save indicator */}
         {isAuthenticated && !editingQuizId && (
           <div className="cloud-save-indicator">
-            {cloudSaving ? (
+            {uploadingDeferredImages ? (
+              <>
+                <span className="upload-spinner" />
+                <span>Uploading images...</span>
+              </>
+            ) : cloudSaving ? (
               <>
                 <span className="upload-spinner" />
                 <span>Saving to cloud...</span>
@@ -1315,9 +1483,9 @@ function QuizCreator() {
             className="btn btn-primary"
             onClick={handleSave}
             disabled={isSaveDisabled}
-            title={hasUploadsInProgress ? 'Please wait for image uploads to finish' : cloudSaving ? 'Saving to cloud...' : undefined}
+            title={uploadingDeferredImages ? 'Uploading images...' : cloudSaving ? 'Saving to cloud...' : undefined}
           >
-            {cloudSaving ? 'Saving...' : hasUploadsInProgress ? 'Uploading...' : editingQuizId ? 'Save Changes' : 'Save Quiz'}
+            {uploadingDeferredImages ? 'Uploading images...' : cloudSaving ? 'Saving...' : editingQuizId ? 'Save Changes' : 'Save Quiz'}
           </button>
         </div>
       </div>
