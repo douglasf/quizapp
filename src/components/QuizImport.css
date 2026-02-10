@@ -43,8 +43,41 @@
   margin-bottom: 2rem;
 }
 
-.export-section h2 {
+/* Quiz summary line */
+.quiz-summary {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
   color: var(--color-success-text);
+}
+
+/* Large host CTA button */
+.btn-host-cta {
+  display: block;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+/* JSON accordion */
+.json-accordion {
+  margin-bottom: 1.25rem;
+}
+
+.json-accordion summary {
+  cursor: pointer;
+  padding: 0.625rem 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.json-accordion summary:hover {
+  color: var(--color-text-body);
 }
 
 .json-preview {
@@ -66,10 +99,12 @@
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
 }
 
-.export-actions {
+/* Secondary export tools */
+.export-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 0.625rem;
+  margin-top: 1rem;
 }
 
 /* Link warning — large shareable URL notice */
@@ -321,6 +356,8 @@
 .nav-actions {
   display: flex;
   justify-content: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
 }
 
 /* -- Dark mode -- */
@@ -344,11 +381,11 @@
     padding: 1rem;
   }
 
-  .export-actions {
+  .export-tools {
     flex-direction: column;
   }
 
-  .export-actions .btn {
+  .export-tools .btn {
     width: 100%;
   }
 

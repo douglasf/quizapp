@@ -341,50 +341,35 @@ function QuizImport() {
   return (
     <div className="page quiz-import">
       <div className="import-container">
-        <h1>{isLoadMode && !createdQuiz ? 'Load a Quiz to Host' : 'Import / Export Quiz'}</h1>
+        <h1>
+          {createdQuiz
+            ? 'Your Quiz is Ready!'
+            : isLoadMode
+              ? 'Load a Quiz to Host'
+              : 'Import / Export Quiz'}
+        </h1>
 
         {/* ─── Export section ─── */}
         {createdQuiz && (
           <section className="export-section">
-            <h2>Your Quiz is Ready!</h2>
-            <p className="section-description">
-              Share this JSON with others so they can import your quiz, or host it now.
+            <p className="quiz-summary">
+              {createdQuiz.title} — {createdQuiz.questions.length} question{createdQuiz.questions.length !== 1 ? 's' : ''}
             </p>
 
-            <div className="json-preview">
-              <pre>{prettyJson}</pre>
-            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-host-cta"
+              onClick={handleHostCreatedQuiz}
+            >
+              Host This Quiz
+            </button>
 
-            <div className="export-actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleHostCreatedQuiz}
-              >
-                Host This Quiz
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleCopyToClipboard}
-              >
-                {copied ? 'Copied!' : 'Copy to Clipboard'}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleDownloadJson}
-              >
-                Download as JSON
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleNewQuiz}
-              >
-                Create New Quiz
-              </button>
-            </div>
+            <details className="json-accordion">
+              <summary>View Quiz JSON</summary>
+              <div className="json-preview">
+                <pre>{prettyJson}</pre>
+              </div>
+            </details>
 
             {/* Share link options */}
             <div className="share-links-section">
@@ -439,10 +424,29 @@ function QuizImport() {
                 {linkWarning}
               </div>
             )}
+
+            {/* Secondary export tools */}
+            <div className="export-tools">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleCopyToClipboard}
+              >
+                {copied ? 'Copied!' : 'Copy to Clipboard'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleDownloadJson}
+              >
+                Download as JSON
+              </button>
+            </div>
           </section>
         )}
 
         {/* ─── Import section ─── */}
+        {!createdQuiz && (
         <section className="import-section">
           <h2>{isLoadMode && !createdQuiz ? 'Load Your Quiz' : 'Import a Quiz'}</h2>
           <p className="section-description">
@@ -581,9 +585,19 @@ function QuizImport() {
             Import Quiz
           </button>
         </section>
+        )}
 
         {/* ─── Navigation ─── */}
         <div className="nav-actions">
+          {createdQuiz && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleNewQuiz}
+            >
+              Create New Quiz
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-secondary"

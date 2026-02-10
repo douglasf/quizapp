@@ -564,7 +564,7 @@ function QuizCreator() {
         await updateQuiz(editingQuizId, quiz)
         localStorage.setItem('quizapp_imported_quiz', JSON.stringify(quiz))
         showNotification('info', 'Quiz updated!', 3000)
-        navigate('/import')
+        navigate('/my-quizzes')
       } catch (err) {
         if (err instanceof ApiError) {
           if (err.status === 403) {
@@ -595,14 +595,18 @@ function QuizCreator() {
         throw err
       }
 
-      // If authenticated, also save to cloud (non-blocking — localStorage is the source of truth)
+      // If authenticated, save to cloud before navigating so the cloud ID
+      // is available in localStorage when QuizImport mounts.
       if (isAuthenticated) {
         setCloudSaving(true)
         try {
           const cloudResult = await createQuiz(quiz)
           setCloudQuizId(cloudResult.quiz.id)
+          localStorage.setItem('quizapp_created_quiz_cloud_id', cloudResult.quiz.id)
           showNotification('info', 'Quiz saved to cloud!', 3000)
         } catch {
+          // Cloud save failed — still navigate without cloud ID.
+          // The full encoded link and Copy/Download still work.
           showNotification('warning', 'Saved locally. Cloud save failed.', 5000)
         } finally {
           setCloudSaving(false)
