@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Quiz, Question, QuestionType } from '../types/quiz'
 import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz'
 import { validateQuiz } from '../utils/quizValidator'
 import { compressImageFile, COMPRESS_THRESHOLD, compressAnswerImage, readFileAsDataUrl, compressImageToBlob, compressAnswerImageToBlob } from '../utils/imageCompression'
 import { checkWorkerHealth, uploadImageToR2 } from '../utils/imageUpload'
 import { useAuth } from '../hooks/useAuth'
-import { createQuiz } from '../utils/apiClient'
+import { createQuiz, updateQuiz, getQuiz, ApiError } from '../utils/apiClient'
 import './QuizCreator.css'
 
 let questionIdCounter = 0;
@@ -93,12 +93,18 @@ type QuestionWithId = Question & { _id: number };
 
 function QuizCreator() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { isAuthenticated } = useAuth()
 
   const [title, setTitle] = useState('')
   const [questions, setQuestions] = useState<QuestionWithId[]>([createEmptyQuestion()])
   const [errors, setErrors] = useState<string[]>([])
   const errorBoxRef = useRef<HTMLDivElement>(null)
+
+  // Edit mode state
+  const [editingQuizId, setEditingQuizId] = useState<string | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editLoadError, setEditLoadError] = useState<string | null>(null)
 
   // Cloud save state
   const [cloudSaving, setCloudSaving] = useState(false)
@@ -156,6 +162,78 @@ function QuizCreator() {
       if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current)
     }
   }, [])
+
+  // Edit mode: detect ?edit=<quizId> on mount
+  useEffect(() => {
+    const editId = searchParams.get('edit')
+    if (editId) {
+      setEditingQuizId(editId)
+    }
+  }, [searchParams])
+
+  // Edit mode: fetch quiz data when editingQuizId is set
+  useEffect(() => {
+    if (!editingQuizId) return
+
+    let cancelled = false
+    setEditLoading(true)
+    setEditLoadError(null)
+
+    getQuiz(editingQuizId)
+      .then((response) => {
+        if (cancelled) return
+        const quiz = response.quiz.data
+
+        // Set title
+        setTitle(quiz.title)
+
+        // Map questions to internal format with _id values
+        let maxId = questionIdCounter
+        const mappedQuestions: QuestionWithId[] = quiz.questions.map((q) => {
+          const id = ++questionIdCounter
+          if (id > maxId) maxId = id
+
+          return {
+            ...q,
+            _id: id,
+            // Ensure all type-specific fields have sensible defaults
+            correctIndex: q.correctIndex ?? 0,
+            correctIndices: q.correctIndices,
+            correctValue: q.correctValue,
+            sliderMin: q.sliderMin,
+            sliderMax: q.sliderMax,
+            timeLimitSeconds: q.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS,
+            type: q.type,
+            // Keep existing HTTPS URLs (R2 cloud images) as-is
+            image: q.image,
+            imageOptions: q.imageOptions,
+          }
+        })
+
+        // Advance the counter past all assigned IDs to avoid collisions
+        questionIdCounter = maxId
+
+        setQuestions(mappedQuestions)
+        setEditLoading(false)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError) {
+          if (err.status === 404) {
+            setEditLoadError('Quiz not found — it may have been deleted.')
+          } else if (err.status === 403) {
+            setEditLoadError("You don't have permission to edit this quiz.")
+          } else {
+            setEditLoadError(`Failed to load quiz: ${err.message}`)
+          }
+        } else {
+          setEditLoadError('Failed to load quiz. Please check your connection and try again.')
+        }
+        setEditLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [editingQuizId])
 
   function updateQuestion(index: number, updated: QuestionWithId) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? updated : q)))
@@ -479,33 +557,60 @@ function QuizCreator() {
 
     setErrors([])
 
-    // Store quiz in localStorage so the import screen can access it
-    try {
-      localStorage.setItem('quizapp_created_quiz', JSON.stringify(quiz))
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
-        setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
-        errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        return
-      }
-      throw err
-    }
-
-    // If authenticated, also save to cloud (non-blocking — localStorage is the source of truth)
-    if (isAuthenticated) {
+    if (editingQuizId) {
+      // ----- Edit mode: call updateQuiz -----
       setCloudSaving(true)
       try {
-        const cloudResult = await createQuiz(quiz)
-        setCloudQuizId(cloudResult.quiz.id)
-        showNotification('info', 'Quiz saved to cloud!', 3000)
-      } catch {
-        showNotification('warning', 'Saved locally. Cloud save failed.', 5000)
+        await updateQuiz(editingQuizId, quiz)
+        localStorage.setItem('quizapp_imported_quiz', JSON.stringify(quiz))
+        showNotification('info', 'Quiz updated!', 3000)
+        navigate('/import')
+      } catch (err) {
+        if (err instanceof ApiError) {
+          if (err.status === 403) {
+            setErrors(["You don't have permission to edit this quiz."])
+          } else if (err.status === 404) {
+            setErrors(['Quiz not found — it may have been deleted.'])
+          } else {
+            setErrors([`Failed to save changes: ${err.message}`])
+          }
+        } else {
+          setErrors(['Failed to save changes. Please check your connection and try again.'])
+        }
+        errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       } finally {
         setCloudSaving(false)
       }
-    }
+    } else {
+      // ----- Create mode: existing flow -----
+      // Store quiz in localStorage so the import screen can access it
+      try {
+        localStorage.setItem('quizapp_created_quiz', JSON.stringify(quiz))
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+          setErrors(['Quiz is too large to save locally. Please remove some images or simplify the quiz.'])
+          errorBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+        throw err
+      }
 
-    navigate('/import')
+      // If authenticated, also save to cloud (non-blocking — localStorage is the source of truth)
+      if (isAuthenticated) {
+        setCloudSaving(true)
+        try {
+          const cloudResult = await createQuiz(quiz)
+          setCloudQuizId(cloudResult.quiz.id)
+          showNotification('info', 'Quiz saved to cloud!', 3000)
+        } catch {
+          showNotification('warning', 'Saved locally. Cloud save failed.', 5000)
+        } finally {
+          setCloudSaving(false)
+        }
+      }
+
+      navigate('/import')
+    }
   }
 
   function handleCancel() {
@@ -515,12 +620,61 @@ function QuizCreator() {
   const optionLabels = ['A', 'B', 'C', 'D']
 
   const hasUploadsInProgress = uploadingImages.size > 0
-  const isSaveDisabled = hasUploadsInProgress || cloudSaving
+  const isSaveDisabled = hasUploadsInProgress || cloudSaving || editLoading
+
+  // Edit mode: show loading spinner while fetching quiz data
+  if (editLoading) {
+    return (
+      <div className="page quiz-creator">
+        <div className="creator-container">
+          <h1>Edit Quiz</h1>
+          <div className="edit-loading">
+            <span className="upload-spinner" />
+            <p>Loading quiz data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Edit mode: show error if quiz data failed to load
+  if (editLoadError) {
+    return (
+      <div className="page quiz-creator">
+        <div className="creator-container">
+          <h1>Edit Quiz</h1>
+          <div className="error-box" role="alert">
+            <strong>{editLoadError}</strong>
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => navigate('/my-quizzes')}
+            >
+              Back to My Quizzes
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="page quiz-creator">
       <div className="creator-container">
-        <h1>Create a Quiz</h1>
+        <h1>{editingQuizId ? 'Edit Quiz' : 'Create a Quiz'}</h1>
+
+        {editingQuizId && (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate('/my-quizzes')}
+            style={{ marginBottom: '1rem' }}
+          >
+            &larr; Back to My Quizzes
+          </button>
+        )}
 
         {/* Notification toast */}
         {notification && (
@@ -1128,7 +1282,7 @@ function QuizCreator() {
         </button>
 
         {/* Cloud save indicator */}
-        {isAuthenticated && (
+        {isAuthenticated && !editingQuizId && (
           <div className="cloud-save-indicator">
             {cloudSaving ? (
               <>
@@ -1159,7 +1313,7 @@ function QuizCreator() {
             disabled={isSaveDisabled}
             title={hasUploadsInProgress ? 'Please wait for image uploads to finish' : cloudSaving ? 'Saving to cloud...' : undefined}
           >
-            {cloudSaving ? 'Saving...' : hasUploadsInProgress ? 'Uploading...' : 'Save Quiz'}
+            {cloudSaving ? 'Saving...' : hasUploadsInProgress ? 'Uploading...' : editingQuizId ? 'Save Changes' : 'Save Quiz'}
           </button>
         </div>
       </div>

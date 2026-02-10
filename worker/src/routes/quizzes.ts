@@ -5,6 +5,7 @@
  *   POST   /api/quizzes      — Create a new quiz (protected)
  *   GET    /api/quizzes       — List quizzes for the authenticated user (protected)
  *   GET    /api/quizzes/:id   — Get a single quiz by ID (public)
+ *   PUT    /api/quizzes/:id   — Update a quiz (protected, owner only)
  *   DELETE /api/quizzes/:id   — Delete a quiz (protected, owner only)
  */
 
@@ -199,6 +200,75 @@ quizzes.get("/:id", async (c) => {
   } catch (err) {
     console.error("Failed to get quiz:", err);
     return c.json({ error: "Failed to fetch quiz" }, 500);
+  }
+});
+
+// ----------------------------- UPDATE ---------------------------------------
+
+quizzes.put("/:id", authMiddleware, async (c) => {
+  const id = c.req.param("id");
+  const user = c.get("user");
+
+  // Parse body
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  try {
+    // Verify the quiz exists and the user owns it
+    const row = await c.env.DB.prepare(
+      "SELECT user_id FROM quizzes WHERE id = ?",
+    )
+      .bind(id)
+      .first<{ user_id: string }>();
+
+    if (!row) {
+      return c.json({ error: "Quiz not found" }, 404);
+    }
+
+    if (row.user_id !== user.id) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    // Validate quiz data
+    const validation = validateQuiz(body);
+    if (!validation.valid) {
+      return c.json({ error: "Validation failed", details: validation.errors }, 400);
+    }
+
+    const quiz = body as { title: string; questions: unknown[] };
+
+    await c.env.DB.prepare(
+      `UPDATE quizzes SET title = ?, question_count = ?, quiz_json = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+    )
+      .bind(
+        quiz.title.trim(),
+        quiz.questions.length,
+        JSON.stringify(quiz),
+        id,
+      )
+      .run();
+
+    // Fetch the updated_at value set by the database
+    const updated = await c.env.DB.prepare(
+      "SELECT updated_at FROM quizzes WHERE id = ?",
+    )
+      .bind(id)
+      .first<{ updated_at: string }>();
+
+    return c.json({
+      id,
+      title: quiz.title.trim(),
+      questionCount: quiz.questions.length,
+      updatedAt: updated?.updated_at ?? new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to update quiz:", err);
+    return c.json({ error: "Failed to update quiz" }, 500);
   }
 });
 

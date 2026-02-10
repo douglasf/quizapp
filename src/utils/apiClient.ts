@@ -260,6 +260,39 @@ export async function createQuiz(quiz: Quiz): Promise<{ quiz: QuizMeta }> {
   });
 }
 
+export async function updateQuiz(
+  id: string,
+  quiz: Quiz,
+): Promise<{ id: string; title: string; questionCount: number; updatedAt: string }> {
+  try {
+    return await apiRequest<{
+      id: string;
+      title: string;
+      questionCount: number;
+      updatedAt: string;
+    }>(`/api/quizzes/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ title: quiz.title, questions: quiz.questions }),
+    });
+  } catch (err) {
+    if (err instanceof ApiError) {
+      if (err.status === 403) {
+        throw new ApiError(
+          "You don't have permission to edit this quiz",
+          403,
+        );
+      }
+      if (err.status === 404) {
+        throw new ApiError(
+          "Quiz not found — it may have been deleted",
+          404,
+        );
+      }
+    }
+    throw err;
+  }
+}
+
 export async function listQuizzes(
   page?: number,
   limit?: number,

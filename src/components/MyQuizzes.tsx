@@ -312,6 +312,11 @@ function MyQuizzes() {
                       <span className="quiz-card-date">
                         {formatDate(quiz.createdAt)}
                       </span>
+                      {quiz.updatedAt && quiz.updatedAt !== quiz.createdAt && (
+                        <span className="quiz-card-updated">
+                          Edited: {formatDate(quiz.updatedAt)}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="quiz-card-actions">
@@ -321,6 +326,13 @@ function MyQuizzes() {
                       onClick={() => handleHost(quiz.id)}
                     >
                       Host
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => navigate(`/create?edit=${quiz.id}`)}
+                    >
+                      Edit
                     </button>
                     <button
                       type="button"

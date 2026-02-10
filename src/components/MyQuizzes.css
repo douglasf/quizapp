@@ -185,6 +185,12 @@
   content: '';
 }
 
+.quiz-card-updated {
+  font-style: italic;
+  color: var(--color-text-muted);
+  opacity: 0.85;
+}
+
 /* ── Card Actions ── */
 
 .quiz-card-actions {
