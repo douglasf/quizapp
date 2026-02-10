@@ -23,6 +23,7 @@ import {
   logout as apiLogout,
   refreshToken as apiRefresh,
   setAccessToken,
+  getAccessTokenExpiresAt,
   type AuthUser,
 } from "../utils/apiClient";
 
@@ -93,6 +94,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // ── Proactive token refresh (plan §5.3.2 / §5.3.3, Step 3) ─────────
+  // Keeps the access token fresh so the host never hits a 401 delay.
+  //  • Schedules a timeout to refresh ~60 s before the JWT expires
+  //  • Refreshes on tab-focus if the token is stale
+  //  • Refreshes when connectivity returns after being offline
+  useEffect(() => {
+    if (!user) return; // Not logged in — nothing to keep alive
+
+    const BUFFER_MS = 60_000; // refresh 1 minute before expiry
+
+    /**
+     * Silently refresh the access token, updating local user state on
+     * success.  Failures are intentionally swallowed — the reactive 401
+     * intercept in apiClient is the safety net.
+     */
+    function silentRefresh() {
+      apiRefresh()
+        .then((result) => setUser(result.user))
+        .catch(() => {
+          /* best-effort; 401 intercept handles the fallback */
+        });
+    }
+
+    /** Returns true when the access token is expired or will expire within BUFFER_MS. */
+    function isTokenStale(): boolean {
+      const expiresAt = getAccessTokenExpiresAt();
+      return !expiresAt || Date.now() > expiresAt - BUFFER_MS;
+    }
+
+    // — visibilitychange: refresh when the tab becomes visible (§5.3.2) —
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible" && isTokenStale()) {
+        silentRefresh();
+      }
+    }
+
+    // — online: refresh when connectivity returns after offline (§5.3.3) —
+    function handleOnline() {
+      if (isTokenStale()) {
+        silentRefresh();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleOnline);
+
+    // — Scheduled timeout: refresh ~60 s before expiry (§5.3.2) —
+    const expiresAt = getAccessTokenExpiresAt();
+    const refreshIn = expiresAt
+      ? expiresAt - Date.now() - BUFFER_MS
+      : 13 * 60 * 1000; // fallback: ~13 min (just under 15 min TTL)
+    const timer = setTimeout(silentRefresh, Math.max(refreshIn, 0));
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", handleOnline);
+      clearTimeout(timer);
+    };
+  }, [user]); // Re-run when user changes (login / logout / refresh updates user)
 
   // ── Actions ───────────────────────────────────────────────────────────
 

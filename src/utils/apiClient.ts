@@ -23,12 +23,39 @@ const API_BASE_URL =
 
 let accessToken: string | null = null;
 
+/**
+ * Unix-ms timestamp when the current access token expires.
+ * Kept in sync with `accessToken` so the UI can schedule proactive refreshes
+ * (see plan §5.3.1 – "Track token expiry time").
+ */
+let accessTokenExpiresAt: number | null = null;
+
+/**
+ * Decode the `exp` claim from a JWT **without** verifying the signature.
+ * The server already verified the token; we only need the expiry for
+ * scheduling purposes (plan §5.3.1).
+ */
+function extractExpiry(jwt: string): number {
+  try {
+    const payload = JSON.parse(atob(jwt.split(".")[1]));
+    return (payload.exp as number) * 1000; // seconds → milliseconds
+  } catch {
+    // Fallback: assume 14 min from now (just under the 15-min server TTL)
+    return Date.now() + 14 * 60 * 1000;
+  }
+}
+
 export function getAccessToken(): string | null {
   return accessToken;
 }
 
+export function getAccessTokenExpiresAt(): number | null {
+  return accessTokenExpiresAt;
+}
+
 export function setAccessToken(token: string | null): void {
   accessToken = token;
+  accessTokenExpiresAt = token ? extractExpiry(token) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +100,7 @@ async function attemptTokenRefresh(): Promise<boolean> {
 
       if (!res.ok) {
         accessToken = null;
+        accessTokenExpiresAt = null;
         return false;
       }
 
@@ -82,9 +110,11 @@ async function attemptTokenRefresh(): Promise<boolean> {
       };
 
       accessToken = data.accessToken;
+      accessTokenExpiresAt = extractExpiry(data.accessToken);
       return true;
     } catch {
       accessToken = null;
+      accessTokenExpiresAt = null;
       return false;
     } finally {
       refreshPromise = null;
@@ -193,6 +223,7 @@ export async function signup(data: {
     body: JSON.stringify(data),
   });
   accessToken = result.accessToken;
+  accessTokenExpiresAt = extractExpiry(result.accessToken);
   return result;
 }
 
@@ -205,6 +236,7 @@ export async function login(data: {
     body: JSON.stringify(data),
   });
   accessToken = result.accessToken;
+  accessTokenExpiresAt = extractExpiry(result.accessToken);
   return result;
 }
 
@@ -213,6 +245,7 @@ export async function logout(): Promise<void> {
     method: "POST",
   });
   accessToken = null;
+  accessTokenExpiresAt = null;
 }
 
 export async function refreshToken(): Promise<AuthResponse> {
@@ -220,6 +253,7 @@ export async function refreshToken(): Promise<AuthResponse> {
     method: "POST",
   });
   accessToken = result.accessToken;
+  accessTokenExpiresAt = extractExpiry(result.accessToken);
   return result;
 }
 
