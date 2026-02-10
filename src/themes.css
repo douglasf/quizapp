@@ -1,0 +1,284 @@
+/* ==========================================================================
+   Theme Skins — CSS Variable Overrides
+   ============================================================================
+   Each [data-theme] block overrides the same custom properties defined in
+   index.css under :root (lines 8-70) and @media prefers-color-scheme: dark
+   (lines 75-127).
+
+   The "default" theme uses NO data-theme attribute and falls through to the
+   existing :root + prefers-color-scheme behavior — zero visual changes.
+
+   Attribute selectors on <html> have higher specificity than plain :root and
+   :root inside @media, so they cleanly override the base palette without
+   needing !important.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   DARK — Forces the dark-mode palette regardless of system preference.
+   Values match the existing @media (prefers-color-scheme: dark) block.
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  /* Primary Colors */
+  --color-primary: #c084fc;
+  --color-primary-dark: #a855f7;
+  --color-primary-darker: #9333ea;
+
+  /* Success / Mint */
+  --color-success: #4ade80;
+  --color-success-dark: #22c55e;
+  --color-success-darker: #16a34a;
+
+  /* Warn / Peach */
+  --color-warn: #fb923c;
+  --color-warn-dark: #f97316;
+  --color-warn-darker: #ea580c;
+
+  /* Answer Button Colors */
+  --color-answer-red: #f472b6;
+  --color-answer-blue: #22d3ee;
+  --color-answer-yellow: #fde047;
+  --color-answer-green: #4ade80;
+
+  /* Answer Button Text */
+  --color-answer-red-text: #fff;
+  --color-answer-blue-text: #0c4a6e;
+  --color-answer-yellow-text: #422006;
+  --color-answer-green-text: #052e16;
+
+  /* Background, Card, Borders */
+  --color-bg-light: #1a1025;
+  --color-bg-card: #231735;
+  --color-border: #3b1f5e;
+  --color-border-muted: #312454;
+
+  /* Text */
+  --color-text-dark: #f3e8ff;
+  --color-text-body: #e9d5ff;
+  --color-text-muted: #c4b5fd;
+  --color-text-secondary: #a78bfa;
+  --color-text-light: #1a1025;
+
+  /* Semantic Colors */
+  --color-error: #f472b6;
+  --color-error-bg: #3d1030;
+  --color-error-border: #831843;
+  --color-error-text: #fbcfe8;
+
+  --color-warning-bg: #3d2800;
+  --color-warning-border: #92400e;
+  --color-warning-text: #fde68a;
+
+  --color-success-bg: #052e16;
+  --color-success-border: #166534;
+  --color-success-text: #a7f3d0;
+
+  /* Chip / Badge */
+  --color-chip-bg: #3b1f5e;
+  --color-chip-text: #e9d5ff;
+  --color-chip-danger-bg: #3d1030;
+  --color-chip-danger-text: #fbcfe8;
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   NEON ARCADE — Black background, neon cyan/magenta/lime/yellow, glowing feel.
+   -------------------------------------------------------------------------- */
+[data-theme="neon"] {
+  /* Primary Colors — Neon cyan */
+  --color-primary: #00fff7;
+  --color-primary-dark: #00d4ce;
+  --color-primary-darker: #00a8a3;
+
+  /* Success — Neon lime */
+  --color-success: #39ff14;
+  --color-success-dark: #2de00f;
+  --color-success-darker: #20c00a;
+
+  /* Warn — Neon yellow */
+  --color-warn: #fff700;
+  --color-warn-dark: #e0d900;
+  --color-warn-darker: #c4be00;
+
+  /* Answer Button Colors — Vivid neon */
+  --color-answer-red: #ff2d7b;
+  --color-answer-blue: #00fff7;
+  --color-answer-yellow: #fff700;
+  --color-answer-green: #39ff14;
+
+  /* Answer Button Text — Dark for readability on neon */
+  --color-answer-red-text: #1a0010;
+  --color-answer-blue-text: #001a19;
+  --color-answer-yellow-text: #1a1900;
+  --color-answer-green-text: #0a1a00;
+
+  /* Background — Deep black */
+  --color-bg-light: #0a0a0f;
+  --color-bg-card: #12121c;
+  --color-border: #2a2a3d;
+  --color-border-muted: #1f1f30;
+
+  /* Text — Bright on dark */
+  --color-text-dark: #f0f0ff;
+  --color-text-body: #d0d0e8;
+  --color-text-muted: #a0a0c0;
+  --color-text-secondary: #8080a0;
+  --color-text-light: #0a0a0f;
+
+  /* Semantic Colors */
+  --color-error: #ff2d7b;
+  --color-error-bg: #2a0018;
+  --color-error-border: #7a0040;
+  --color-error-text: #ff8cb8;
+
+  --color-warning-bg: #2a2500;
+  --color-warning-border: #7a6e00;
+  --color-warning-text: #fff78e;
+
+  --color-success-bg: #0a2a04;
+  --color-success-border: #1a6e0a;
+  --color-success-text: #8eff78;
+
+  /* Chip / Badge — Neon accents */
+  --color-chip-bg: #1a1a2e;
+  --color-chip-text: #00fff7;
+  --color-chip-danger-bg: #2a0018;
+  --color-chip-danger-text: #ff2d7b;
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   HOLIDAY — Festive red and green, deep green background, gold accents.
+   -------------------------------------------------------------------------- */
+[data-theme="holiday"] {
+  /* Primary Colors — Festive red */
+  --color-primary: #ef4444;
+  --color-primary-dark: #dc2626;
+  --color-primary-darker: #b91c1c;
+
+  /* Success — Holly green */
+  --color-success: #22c55e;
+  --color-success-dark: #16a34a;
+  --color-success-darker: #15803d;
+
+  /* Warn — Gold */
+  --color-warn: #fbbf24;
+  --color-warn-dark: #f59e0b;
+  --color-warn-darker: #d97706;
+
+  /* Answer Button Colors — Candy-cane inspired */
+  --color-answer-red: #ef4444;
+  --color-answer-blue: #38bdf8;
+  --color-answer-yellow: #fbbf24;
+  --color-answer-green: #22c55e;
+
+  /* Answer Button Text */
+  --color-answer-red-text: #fff;
+  --color-answer-blue-text: #082f49;
+  --color-answer-yellow-text: #451a03;
+  --color-answer-green-text: #052e16;
+
+  /* Background — Deep evergreen */
+  --color-bg-light: #0f2318;
+  --color-bg-card: #162e20;
+  --color-border: #1e4d2e;
+  --color-border-muted: #1a3d26;
+
+  /* Text — Warm light on dark green */
+  --color-text-dark: #fef2e8;
+  --color-text-body: #fde6d0;
+  --color-text-muted: #d4b896;
+  --color-text-secondary: #b89a6e;
+  --color-text-light: #0f2318;
+
+  /* Semantic Colors */
+  --color-error: #ef4444;
+  --color-error-bg: #3a0f0f;
+  --color-error-border: #991b1b;
+  --color-error-text: #fca5a5;
+
+  --color-warning-bg: #3a2a08;
+  --color-warning-border: #92400e;
+  --color-warning-text: #fde68a;
+
+  --color-success-bg: #052e16;
+  --color-success-border: #166534;
+  --color-success-text: #a7f3d0;
+
+  /* Chip / Badge */
+  --color-chip-bg: #1e4d2e;
+  --color-chip-text: #fef2e8;
+  --color-chip-danger-bg: #3a0f0f;
+  --color-chip-danger-text: #fca5a5;
+
+  color-scheme: dark;
+}
+
+/* --------------------------------------------------------------------------
+   WARM SUNSET — Deep indigo background, coral/amber/rose primary colors,
+   warm-toned answer buttons.
+   -------------------------------------------------------------------------- */
+[data-theme="sunset"] {
+  /* Primary Colors — Coral / Rose */
+  --color-primary: #fb7185;
+  --color-primary-dark: #f43f5e;
+  --color-primary-darker: #e11d48;
+
+  /* Success — Warm amber-green */
+  --color-success: #a3e635;
+  --color-success-dark: #84cc16;
+  --color-success-darker: #65a30d;
+
+  /* Warn — Amber / Orange */
+  --color-warn: #f59e0b;
+  --color-warn-dark: #d97706;
+  --color-warn-darker: #b45309;
+
+  /* Answer Button Colors — Warm tones */
+  --color-answer-red: #fb7185;
+  --color-answer-blue: #7dd3fc;
+  --color-answer-yellow: #fbbf24;
+  --color-answer-green: #a3e635;
+
+  /* Answer Button Text */
+  --color-answer-red-text: #1a0008;
+  --color-answer-blue-text: #082f49;
+  --color-answer-yellow-text: #451a03;
+  --color-answer-green-text: #1a2e05;
+
+  /* Background — Deep indigo */
+  --color-bg-light: #1e1030;
+  --color-bg-card: #281540;
+  --color-border: #3d2060;
+  --color-border-muted: #331a50;
+
+  /* Text — Warm light on deep indigo */
+  --color-text-dark: #fff1f2;
+  --color-text-body: #fecdd3;
+  --color-text-muted: #dba0a8;
+  --color-text-secondary: #c07080;
+  --color-text-light: #1e1030;
+
+  /* Semantic Colors */
+  --color-error: #fb7185;
+  --color-error-bg: #3a0f18;
+  --color-error-border: #9f1239;
+  --color-error-text: #fda4af;
+
+  --color-warning-bg: #3a2a08;
+  --color-warning-border: #92400e;
+  --color-warning-text: #fde68a;
+
+  --color-success-bg: #1a2e05;
+  --color-success-border: #3f6212;
+  --color-success-text: #d9f99d;
+
+  /* Chip / Badge */
+  --color-chip-bg: #3d2060;
+  --color-chip-text: #fecdd3;
+  --color-chip-danger-bg: #3a0f18;
+  --color-chip-danger-text: #fda4af;
+
+  color-scheme: dark;
+}

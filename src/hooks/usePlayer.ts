@@ -6,6 +6,7 @@ import type { DataConnection } from 'peerjs';
 import { createPlayerPeer } from '../utils/peer';
 import type { HostMessage, PlayerMessage } from '../types/messages';
 import type { PlayerAvatar } from '../types/game';
+import { applyTheme } from '../utils/theme';
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_INTERVAL_MS = 5_000;
@@ -109,6 +110,13 @@ export function usePlayer(gameCode: string): UsePlayerReturn {
         isReconnectingRef.current = false;
         setIsLoading(false);
         setErrorMessage(null);
+        // Apply host's theme for late-joining/reconnecting players
+        if (msg.theme) applyTheme(msg.theme);
+        break;
+      }
+
+      case 'theme': {
+        applyTheme(msg.theme);
         break;
       }
 

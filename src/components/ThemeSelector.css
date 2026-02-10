@@ -1,0 +1,85 @@
+/* ==========================================================================
+   ThemeSelector — compact horizontal theme picker for the host lobby
+   Placed between the player list and the action buttons.
+   ========================================================================== */
+
+.theme-selector {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.theme-selector-label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.theme-selector-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border: 2px solid var(--color-border);
+  border-radius: 2rem;
+  background-color: var(--color-bg-card);
+  color: var(--color-text-body);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease,
+    box-shadow 0.15s ease;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.theme-btn:hover {
+  border-color: var(--color-primary-dark);
+  background-color: var(--color-bg-light);
+}
+
+.theme-btn--active {
+  border-color: var(--color-primary-dark);
+  background-color: var(--color-primary);
+  color: var(--color-text-dark);
+  box-shadow: 0 0 0 2px var(--color-primary-dark);
+}
+
+.theme-btn--active:hover {
+  background-color: var(--color-primary);
+}
+
+.theme-btn-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.theme-btn-label {
+  line-height: 1;
+}
+
+/* ── Responsive: on narrow screens, allow wrapping and slightly smaller buttons ── */
+
+@media (max-width: 480px) {
+  .theme-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+
+  .theme-btn-emoji {
+    font-size: 0.9rem;
+  }
+}

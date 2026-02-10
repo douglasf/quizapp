@@ -10,8 +10,10 @@ import * as peerManager from '../utils/peerManager';
 import { calculateScore, isAnswerCorrect } from '../utils/scoring';
 import { validateQuiz } from '../utils/quizValidator';
 import { getQuiz, ApiError } from '../utils/apiClient';
+import { applyTheme, saveTheme, getSavedTheme } from '../utils/theme';
 import Avatar from './Avatar';
 import Scoreboard from './Scoreboard';
+import ThemeSelector from './ThemeSelector';
 import type { Quiz, QuestionType } from '../types/quiz';
 import { DEFAULT_TIME_LIMIT_SECONDS } from '../types/quiz';
 import type { AnswerSummaryResult } from '../types/game';
@@ -332,6 +334,8 @@ function HostPage() {
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizLoadError, setQuizLoadError] = useState<string | null>(null);
   const [showAnonymousStandingsModal, setShowAnonymousStandingsModal] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(getSavedTheme);
+  const currentThemeRef = useRef(currentTheme);
   const { isFullscreen, toggleFullscreen, isSupported: fullscreenSupported } = useFullscreen();
 
   const {
@@ -353,6 +357,7 @@ function HostPage() {
   // Keep refs in sync with state
   currentQuestionIndexRef.current = state.currentQuestionIndex;
   phaseRef.current = state.phase;
+  currentThemeRef.current = currentTheme;
 
   // Callback ref for when a player rejoins — sends them the current question.
   // Declared before useHost() so it can be passed in; the .current value is
@@ -368,6 +373,7 @@ function HostPage() {
     phaseRef,
     onPlayerRejoinRef,
     onPlayerGetStateRef,
+    currentThemeRef,
   );
 
   // Assign the rejoin callback after useHost() so sendToPlayer is in scope
@@ -377,6 +383,10 @@ function HostPage() {
       const phase = phaseRef.current;
       const qIndex = currentQuestionIndexRef.current;
       const question = quiz.questions[qIndex];
+
+      // Send current theme to reconnecting player
+      const theme = currentThemeRef.current;
+      sendToPlayer(playerName, { type: 'theme', theme });
 
       // If we're in question or answer_reveal phase, send the current question
       if ((phase === 'question' || phase === 'answer_reveal') && question) {
@@ -531,6 +541,13 @@ function HostPage() {
       setTimeout(() => setCopied(false), 2000);
     });
   }, [joinUrl]);
+
+  const handleThemeChange = useCallback((themeId: string) => {
+    setCurrentTheme(themeId);
+    applyTheme(themeId);
+    saveTheme(themeId);
+    broadcast({ type: 'theme', theme: themeId });
+  }, [broadcast]);
 
   const handleStartQuiz = useCallback(() => {
     if (connectedCount === 0 || !quiz) return;
@@ -977,6 +994,9 @@ function HostPage() {
               <div className="player-list-empty">Waiting for players to join...</div>
             )}
           </div>
+
+          {/* Theme selector */}
+          <ThemeSelector currentTheme={currentTheme} onThemeChange={handleThemeChange} />
 
           {/* Actions */}
           <div className="lobby-actions">

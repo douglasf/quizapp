@@ -15,7 +15,7 @@ export type PlayerMessage =
 export type HostMessage =
   | { type: 'welcome'; playerName: string; gameCode: string }
   | { type: 'rejoin_success'; playerName: string; gameCode: string; score: number; currentQuestionIndex: number; phase: string }
-  | { type: 'game_state'; phase: string; currentQuestionIndex: number; score: number; standings?: { name: string; score: number; rank: number; avatar?: { emoji: string; color: string } }[] }
+  | { type: 'game_state'; phase: string; currentQuestionIndex: number; score: number; standings?: { name: string; score: number; rank: number; avatar?: { emoji: string; color: string } }[]; theme?: string }
   | { type: 'player_list'; players: { name: string; connected: boolean; avatar?: { emoji: string; color: string } }[] }
   | { type: 'question'; index: number; total: number; text: string; options: string[]; timeLimitSeconds: number; questionType: QuestionType; sliderMin?: number; sliderMax?: number; image?: string; imageOptions?: string[] }
   | { type: 'answer_ack'; questionIndex: number }
@@ -34,6 +34,7 @@ export type HostMessage =
   | { type: 'answer_summary'; results: { name: string; avatar?: { emoji: string; color: string }; correct: boolean; scoreGained: number }[] }
   | { type: 'game_over'; standings: { name: string; score: number; rank: number; avatar?: { emoji: string; color: string } }[] }
   | { type: 'play_again' }
+  | { type: 'theme'; theme: string }
   | { type: 'error'; message: string }
   | { type: 'pong' };
 

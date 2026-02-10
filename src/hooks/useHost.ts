@@ -43,6 +43,7 @@ export function useHost(
   phaseRef?: React.RefObject<GamePhase>,
   onPlayerRejoinRef?: React.RefObject<((playerName: string) => void) | null>,
   onPlayerGetStateRef?: React.RefObject<((playerName: string) => void) | null>,
+  currentThemeRef?: React.RefObject<string>,
 ): UseHostReturn {
   // Use PeerManager singleton for peer lifecycle
   const snapshot = useSyncExternalStore(
@@ -337,6 +338,7 @@ export function useHost(
                 currentQuestionIndex: qIndex,
                 score: player.score,
                 standings: stateStandings,
+                theme: currentThemeRef?.current,
               } satisfies HostMessage);
 
               broadcast(buildPlayerListMessage());
@@ -397,7 +399,7 @@ export function useHost(
         });
       });
     },
-    [gameCode, broadcast, buildPlayerListMessage, syncPlayersState, addAnswer, currentQuestionIndexRef, phaseRef, onPlayerRejoinRef, onPlayerGetStateRef],
+    [gameCode, broadcast, buildPlayerListMessage, syncPlayersState, addAnswer, currentQuestionIndexRef, phaseRef, onPlayerRejoinRef, onPlayerGetStateRef, currentThemeRef],
   );
 
   // ---------- connection registration via PeerManager ----------
