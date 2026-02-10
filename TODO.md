@@ -1,3 +1,6 @@
+
+PWA on iOS (perhaps others, i only own an iphone) shows a github styles 404 page
+
 # Quiz App TODO
 
 ## 🔴 BUGS
@@ -14,11 +17,7 @@ _No pending chores._
 
 ## 🟠 ENHANCEMENTS
 
-### Create Schema JSON File for the Quiz Format
-- [ ] **Define a `schema.json` file that formally describes the quiz data format**
-  - **Problem**: The quiz JSON structure is implicit — it exists only in code (TypeScript types and API handlers). There is no standalone, language-agnostic schema that documents valid quiz structure, required fields, allowed question types, or value constraints
-  - **Why it matters**: A formal schema enables editor autocomplete when hand-crafting quizzes, automated validation of imported quiz files before they hit the API, and serves as living documentation for the quiz format. It also makes it easier for others (or future tooling) to produce valid quiz data without reading the source code
-  - **Scope**: Small — author a JSON Schema file covering the quiz structure (questions, options, question types, images, metadata). Optionally integrate it into the import flow for client-side validation before upload
+_No pending enhancements._
 
 ---
 
@@ -55,6 +54,9 @@ _No pending features._
 - [x] QR code bug fix (StrictMode double-mount race condition eliminated)
 - [x] Host screen layout fixes (grid overflow, timer bar symmetry)
 - [x] **Add `.env` to `.gitignore`** — prevent secrets from being committed _(Fixed in commit 47cf0e7: added `.env` to gitignore to prevent secret leaks)_
+
+### Quiz Format & Documentation
+- [x] **Create Schema JSON File for the Quiz Format** — authored a JSON Schema (draft 2020-12) at `public/quiz-schema.json` covering all 4 question types with conditional validation, field descriptions, and inline examples. Updated example quiz files with `$schema` references for editor autocomplete. Added Quiz Schema documentation section to README
 
 ### Question Types (All 6 Types Implemented)
 - [x] Multiple Choice (4 options, speed-based scoring)

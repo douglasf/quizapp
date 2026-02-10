@@ -1,4 +1,5 @@
 {
+  "$schema": "./quiz-schema.json",
   "title": "Mixed Question Types Demo",
   "questions": [
     {

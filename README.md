@@ -133,6 +133,35 @@ To use someone else's quiz:
 }
 ```
 
+### Quiz Schema
+
+A formal [JSON Schema](https://json-schema.org/learn/getting-started-step-by-step) file describes the complete quiz format, including all question types, field constraints, and validation rules. The schema is available at [`public/quiz-schema.json`](public/quiz-schema.json) and is served at `/quizapp/quiz-schema.json` after deployment.
+
+**Editor autocomplete & validation:** Add a `$schema` property to any quiz JSON file to enable autocomplete suggestions and inline validation in VS Code, JetBrains, and other JSON Schema-aware editors:
+
+```json
+{
+  "$schema": "./quiz-schema.json",
+  "title": "My Quiz",
+  "questions": [ ... ]
+}
+```
+
+**Question types and their required fields:**
+
+| Type | Required Fields | Notes |
+|------|----------------|-------|
+| `multiple_choice` (default) | `options` (exactly 4), `correctIndex` (0–3) | Default when `type` is omitted |
+| `true_false` | `options` (at least 2), `correctIndex` (0–1) | First two options must be non-empty |
+| `slider` | `correctValue`, `sliderMin`, `sliderMax` | `sliderMin` must be less than `sliderMax` (enforced at runtime) |
+| `multi_choice` | `options` (2–8), `correctIndices` (array of 1+ valid indices) | Indices must be unique and in bounds |
+
+All question types support optional `timeLimitSeconds` (5–120, default 30), `image`, and `imageOptions` fields. See the schema file for full descriptions, constraints, and examples.
+
+> **Note:** Some constraints cannot be expressed in JSON Schema (e.g. `sliderMin < sliderMax`, base64 image size limits, `correctValue` within slider range). These are enforced by the app's runtime validators.
+
+**Schema validation (Step 3 of the [implementation plan](.opencode/plans/create-schema-json.md)):** The schema (`public/quiz-schema.json`) was manually validated against the example quiz file (`quiz-example.json`) using the [JSON Schema Validator](https://www.jsonschemavalidator.net/) online tool. The example quiz — which covers all four question types (`multiple_choice`, `true_false`, `slider`, `multi_choice`) — passed validation with no errors. Additionally, adding `"$schema": "./quiz-schema.json"` to the example files enables VS Code's built-in JSON Schema validation, which also reports zero issues when the files are opened in the editor. If you modify the schema or example, re-validate using either method to confirm correctness.
+
 ## Troubleshooting
 
 ### "Game not found" when joining
