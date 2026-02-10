@@ -34,30 +34,3 @@
   margin-bottom: 0.5rem;
   flex-wrap: wrap;
 }
-
-.home-user-greeting {
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
-
-.btn-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: var(--font-body);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.btn-link:hover {
-  color: var(--color-text-dark);
-}
-
-.home-logout {
-  font-size: 0.85rem;
-}

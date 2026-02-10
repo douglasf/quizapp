@@ -4,7 +4,7 @@ import './Home.css'
 
 function Home() {
   const navigate = useNavigate()
-  const { isAuthenticated, isLoading, user, logout } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
   return (
     <div className="page home">
@@ -14,19 +14,14 @@ function Home() {
       </div>
       <p>Create and play quizzes with friends in real-time — no server needed!</p>
 
-      {/* Auth-aware top bar */}
+      {/* Auth-aware action bar (display name / logout now live in the global
+          App header per plan §5.4.1 — this bar only shows contextual actions) */}
       {!isLoading && (
         <div className="home-auth-bar">
           {isAuthenticated ? (
-            <>
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/my-quizzes')}>
-                My Quizzes
-              </button>
-              <span className="home-user-greeting">Hi, {user?.displayName}!</span>
-              <button type="button" className="btn-link home-logout" onClick={() => logout()}>
-                Log out
-              </button>
-            </>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/my-quizzes')}>
+              My Quizzes
+            </button>
           ) : (
             <>
               <button type="button" className="btn btn-secondary" onClick={() => navigate('/login')}>
