@@ -1,11 +1,13 @@
 
-PWA on iOS (perhaps others, i only own an iphone) shows a github styles 404 page
-
 # Quiz App TODO
 
 ## 🔴 BUGS
 
-_No known bugs._
+### TODO-BUG-001: PWA on iOS shows GitHub-style 404 page
+- [ ] **PWA on iOS shows a GitHub-style 404 page instead of the app**
+  - **Status**: Pending
+  - **Reason**: On iOS (and possibly other platforms), opening the PWA displays a GitHub 404 page rather than the expected app content
+  - **Scope**: Unknown — likely related to service worker routing or GitHub Pages fallback configuration
 
 ---
 
@@ -104,9 +106,9 @@ _No pending features._
 
 ## 📋 PENDING (Low Priority)
 
-### CSS Cleanup
+### TODO-PEND-001: Replace `:has()` selectors with explicit CSS classes
 - [ ] **Replace `:has()` selectors with explicit CSS classes** — 13 instances
-  - **Status**: Optional (browser support is good for `:has()`)
+  - **Status**: Pending (optional — browser support is good for `:has()`)
   - **Reason**: Better readability, explicit is better than implicit
   - **Scope**: Low complexity, cosmetic improvement
 
