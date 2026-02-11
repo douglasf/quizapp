@@ -44,6 +44,9 @@ jobs:
           VITE_API_URL: https://quizapp-api.douglasfrisk.workers.dev
           VITE_IMAGE_WORKER_URL: https://quizapp-api.douglasfrisk.workers.dev
 
+      - name: Add 404 fallback for SPA
+        run: cp dist/index.html dist/404.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
