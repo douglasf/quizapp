@@ -1,0 +1,167 @@
+{
+  "$schema": "./quiz-schema.json",
+  "title": "Pop Culture, Music, TV & Nature Quiz",
+  "createdAt": "2026-02-11T12:00:00.000Z",
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "text": "Which artist released the legendary album \"Thriller\" in 1982?",
+      "options": ["Prince", "Michael Jackson", "Stevie Wonder", "Whitney Houston"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "true_false",
+      "text": "The Great Barrier Reef is located off the coast of Australia.",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "slider",
+      "text": "In what year did \"The Simpsons\" first air as a TV series?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 1980,
+      "sliderMax": 2000,
+      "correctValue": 1989,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of these are hit songs by Adele?",
+      "options": ["Hello", "Shallow", "Rolling in the Deep", "Bad Guy", "Someone Like You"],
+      "correctIndex": 0,
+      "correctIndices": [0, 2, 4],
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multiple_choice",
+      "text": "What is the name of the coffee shop where the characters hang out in \"Friends\"?",
+      "options": ["The Brew House", "Central Perk", "Java Joe's", "The Coffee Spot"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "true_false",
+      "text": "\"The Sopranos\" is set in Los Angeles, California.",
+      "options": ["False", "True"],
+      "correctIndex": 0,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "slider",
+      "text": "How many studio albums did The Beatles release?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 5,
+      "sliderMax": 20,
+      "correctValue": 13,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of the following animals are classified as mammals?",
+      "options": ["Dolphin", "Shark", "Bat", "Penguin", "Whale"],
+      "correctIndex": 0,
+      "correctIndices": [0, 2, 4],
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multiple_choice",
+      "text": "Which rock band performed the iconic song \"Bohemian Rhapsody\"?",
+      "options": ["Led Zeppelin", "The Rolling Stones", "Queen", "Pink Floyd"],
+      "correctIndex": 2,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "true_false",
+      "text": "A group of flamingos is called a \"flamboyance\".",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "slider",
+      "text": "How many legs does a spider have?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 4,
+      "sliderMax": 16,
+      "correctValue": 8,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of these TV shows have won the Emmy for Outstanding Drama Series?",
+      "options": ["Breaking Bad", "Friends", "Game of Thrones", "The Simpsons", "The Sopranos"],
+      "correctIndex": 0,
+      "correctIndices": [0, 2, 4],
+      "timeLimitSeconds": 30
+    },
+    {
+      "type": "multiple_choice",
+      "text": "In the Marvel Cinematic Universe, what fictional country is Black Panther from?",
+      "options": ["Genosha", "Wakanda", "Latveria", "Sokovia"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "true_false",
+      "text": "Taylor Swift's self-titled debut album was a country music record.",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "slider",
+      "text": "In what year did Beyoncé release the visual album \"Lemonade\"?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 2005,
+      "sliderMax": 2025,
+      "correctValue": 2016,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of these trees are deciduous (lose their leaves in autumn)?",
+      "options": ["Oak", "Pine", "Maple", "Spruce", "Birch"],
+      "correctIndex": 0,
+      "correctIndices": [0, 2, 4],
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multiple_choice",
+      "text": "Which British band released the iconic album \"Abbey Road\" in 1969?",
+      "options": ["The Rolling Stones", "The Who", "The Beatles", "The Kinks"],
+      "correctIndex": 2,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "true_false",
+      "text": "Sharks are classified as mammals.",
+      "options": ["False", "True"],
+      "correctIndex": 0,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "slider",
+      "text": "Approximately how many episodes of \"The Office\" (US) were produced in total?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 50,
+      "sliderMax": 300,
+      "correctValue": 201,
+      "timeLimitSeconds": 30
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of these characters are original members of the Avengers in the Marvel Cinematic Universe?",
+      "options": ["Iron Man", "Spider-Man", "Thor", "Black Panther", "Black Widow", "Doctor Strange"],
+      "correctIndex": 0,
+      "correctIndices": [0, 2, 4],
+      "timeLimitSeconds": 30
+    }
+  ]
+}
