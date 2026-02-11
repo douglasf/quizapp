@@ -5,7 +5,7 @@ import { validateQuiz } from '../utils/quizValidator'
 import { fetchQuizFromUrl } from '../utils/fetchQuiz'
 import { encodeQuizToFragment, decodeQuizFromFragment } from '../utils/quizLink'
 import { compressQuizImages } from '../utils/imageCompression'
-import { getQuiz, ApiError } from '../utils/apiClient'
+import { getQuiz, createQuiz, ApiError } from '../utils/apiClient'
 import { useAuth } from '../hooks/useAuth'
 import './QuizImport.css'
 
@@ -31,7 +31,13 @@ function QuizImport() {
   const [jsonText, setJsonText] = useState('')
   const [errors, setErrors] = useState<string[]>([])
   const [importSuccess, setImportSuccess] = useState(false)
+  const [importedQuiz, setImportedQuiz] = useState<Quiz | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Save-to-cloud state
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   // URL import state
   const [urlInput, setUrlInput] = useState('')
@@ -115,12 +121,16 @@ function QuizImport() {
       }
       localStorage.removeItem(CREATED_QUIZ_KEY)
       localStorage.removeItem('quizapp_created_quiz_cloud_id')
+      setImportedQuiz(quizData as Quiz)
       setImportSuccess(true)
 
-      // Small delay so user sees the success state
-      setTimeout(() => {
-        navigate('/host')
-      }, 600)
+      // For authenticated users, pause so they can save before hosting.
+      // Unauthenticated users get the original quick redirect.
+      if (!isAuthenticated) {
+        setTimeout(() => {
+          navigate('/host')
+        }, 600)
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 404) {
@@ -277,12 +287,16 @@ function QuizImport() {
       throw err
     }
     localStorage.removeItem(CREATED_QUIZ_KEY)
+    setImportedQuiz(parsed as Quiz)
     setImportSuccess(true)
 
-    // Small delay so user sees the success state
-    setTimeout(() => {
-      navigate('/host')
-    }, 600)
+    // For authenticated users, pause so they can save before hosting.
+    // Unauthenticated users get the original quick redirect.
+    if (!isAuthenticated) {
+      setTimeout(() => {
+        navigate('/host')
+      }, 600)
+    }
   }
 
   function handleImport() {
@@ -332,6 +346,28 @@ function QuizImport() {
     }
 
     setUrlLoading(false)
+  }
+
+  // ── Save imported quiz to cloud ──
+
+  async function handleSaveToMyQuizzes() {
+    if (!importedQuiz) return
+
+    setSaving(true)
+    setSaveError(null)
+
+    try {
+      await createQuiz(importedQuiz)
+      setSaveSuccess(true)
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setSaveError(`Failed to save: ${err.message}`)
+      } else {
+        setSaveError('Failed to save quiz. Please try again.')
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   // ── Render ──
@@ -484,9 +520,49 @@ function QuizImport() {
 
           {/* Success display */}
           {importSuccess && (
-            <output className="success-box">
-              Quiz imported successfully! Redirecting to host lobby...
-            </output>
+            <div className="import-success-area">
+              <output className="success-box">
+                Quiz imported successfully!{!isAuthenticated && ' Redirecting to host lobby...'}
+              </output>
+
+              {/* Save & continue actions for authenticated users */}
+              {isAuthenticated && importedQuiz && (
+                <div className="import-success-actions">
+                  {saveError && (
+                    <div className="save-error" role="alert">
+                      {saveError}
+                    </div>
+                  )}
+
+                  {saveSuccess ? (
+                    <div className="save-success-msg">
+                      Saved to My Quizzes!
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-secondary save-quiz-btn"
+                      onClick={handleSaveToMyQuizzes}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <><span className="btn-spinner" aria-hidden="true" />Saving...</>
+                      ) : (
+                        'Save to My Quizzes'
+                      )}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="btn btn-primary continue-host-btn"
+                    onClick={() => navigate('/host')}
+                  >
+                    Continue to Host Lobby
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Load from My Quizzes — only shown to authenticated users */}
