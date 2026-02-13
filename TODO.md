@@ -1,13 +1,8 @@
-
 # Quiz App TODO
 
 ## 🔴 BUGS
 
-### TODO-BUG-001: PWA on iOS shows GitHub-style 404 page
-- [ ] **PWA on iOS shows a GitHub-style 404 page instead of the app**
-  - **Status**: Pending
-  - **Reason**: On iOS (and possibly other platforms), opening the PWA displays a GitHub 404 page rather than the expected app content
-  - **Scope**: Unknown — likely related to service worker routing or GitHub Pages fallback configuration
+_No pending bugs._
 
 ---
 
@@ -19,17 +14,24 @@ _No pending chores._
 
 ## 🟠 ENHANCEMENTS
 
-_No pending enhancements._
+- [ ] **F1: Make timer countdown much more noticeable with visual and audio effects** — When the timer for a question is about to run out, the timer number currently flashes subtly. Make this MUCH more noticeable on both host and player screens. Consider adding aggressive/frequent flashing or color changes (e.g., red background, larger size), sound effects or voice counting down the final seconds (e.g., "3... 2... 1..."), and additional visual animations to draw attention.
+
+- [ ] **F2: Improve answer clarity on player screen after timer ends for multi-choice questions** — For multi-choice questions, after the timer runs out, the player screen is not very clear about which answers are correct vs. which the player got correct. Currently there's only a slight color difference between correct answers and the answers the player selected correctly. Make this distinction MUCH clearer using visual indicators beyond just color (e.g., checkmarks, icons, badges, borders, patterns, or other visual cues that work for colorblind users).
 
 ---
 
 ## 🔵 FEATURES
 
-_No pending features._
+- [ ] **F3: Investigate: Host-less quiz mode via shareable links** — New feature: Enable users to send a quiz link to a friend who can take the quiz without requiring a host to be present. Requires investigation into: (1) Is this architecturally feasible given the current host-driven quiz flow? (2) What changes would be needed to support player-only quiz mode? (3) How would the quiz timer and scoring work without a host? (4) What's the implementation scope (database schema, API endpoints, UI changes)? (5) How would quiz creation/access control work for shared links?
+
+- [ ] **F4: Implement quiz creator notifications for host-less quiz completions** — After a player completes a host-less quiz, the quiz creator should be notified. Explore and decide on the notification method: email notifications (most straightforward), in-app notifications (if user is logged in), push notifications (if mobile app is developed), or a combination of methods. Also consider: notification content (player name, score, time), frequency/batching if multiple completions, opt-out options, and delivery reliability.
 
 ---
 
 ## 🟢 COMPLETED
+
+### Bug Fixes
+- [x] **TODO-BUG-001: PWA on iOS shows GitHub-style 404 page** — On iOS, opening the PWA displayed a GitHub 404 page instead of the app. Fixed by using relative paths and adding a 404 fallback for GitHub Pages SPA routing _(Fixed in commit f9a3f99)_
 
 ### Authentication & Cloud
 - [x] Login and signup with JWT authentication
