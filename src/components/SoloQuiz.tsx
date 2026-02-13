@@ -121,6 +121,33 @@ function buildRevealAndResult(
   };
 }
 
+function buildShareText(
+  quizTitle: string,
+  totalScore: number,
+  questionResults: QuestionResult[],
+  quizId: string,
+): string {
+  const correctCount = questionResults.filter(r => r.correct).length;
+  const totalQuestions = questionResults.length;
+
+  const totalMs = questionResults.reduce((sum, r) => sum + r.elapsedMs, 0);
+  const totalSeconds = Math.round(totalMs / 1000);
+  const timeStr = totalSeconds >= 60
+    ? `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`
+    : `${totalSeconds}s`;
+
+  const quizLink = `${window.location.origin}/quizapp/#/solo/${quizId}`;
+
+  return [
+    `🧠 Quiz: ${quizTitle}`,
+    `🏆 Score: ${totalScore.toLocaleString()} points`,
+    `⏱️ Time: ${timeStr}`,
+    `✅ ${correctCount}/${totalQuestions} correct`,
+    '',
+    quizLink,
+  ].join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -156,6 +183,7 @@ function SoloQuiz() {
   const timerExpiredRef = useRef(false);
   const answerSubmittedRef = useRef(false);
   const [pendingReveal, setPendingReveal] = useState<PendingReveal | null>(null);
+  const [shareResultCopied, setShareResultCopied] = useState(false);
 
   // ── Derived values ───────────────────────────────────────────────────
   const { phase, quiz, quizTitle, currentQuestionIndex, error } = state;
@@ -397,6 +425,21 @@ function SoloQuiz() {
     ],
   );
 
+  /** Share result: copy formatted text to clipboard */
+  const handleShareResult = useCallback(() => {
+    if (!quizId) return;
+    const text = buildShareText(
+      state.quizTitle,
+      state.totalScore,
+      state.questionResults,
+      quizId,
+    );
+    navigator.clipboard.writeText(text).then(() => {
+      setShareResultCopied(true);
+      setTimeout(() => setShareResultCopied(false), 2000);
+    });
+  }, [quizId, state.quizTitle, state.totalScore, state.questionResults]);
+
   // ── Auto-transition: question → reveal after 1.5s delay ─────────────
   useEffect(() => {
     if (!pendingReveal || phase !== 'question') return;
@@ -435,6 +478,7 @@ function SoloQuiz() {
 
   // ── Play again (reset to ready phase) ─────────────────────────────────
   const handlePlayAgain = useCallback(() => {
+    setShareResultCopied(false);
     setState((prev) => ({
       ...prev,
       phase: 'ready',
@@ -1089,6 +1133,18 @@ function SoloQuiz() {
               {state.totalScore.toLocaleString()} points
             </h1>
             <p className="solo-final-score-label">Your Score</p>
+
+            <button
+              type="button"
+              className="btn solo-share-result-btn"
+              onClick={handleShareResult}
+            >
+              📤 Share Result
+            </button>
+
+            {shareResultCopied && (
+              <div className="solo-share-toast">Copied to clipboard!</div>
+            )}
 
             <ol className="solo-results-list" aria-label="Question results">
               {state.questionResults.map((result) => (

@@ -1069,6 +1069,52 @@
   margin: 0.25rem 0 1.5rem;
 }
 
+/* ── Share result button ── */
+
+.solo-share-result-btn {
+  margin: 0.75rem 0 1.25rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  background-color: var(--color-bg-card);
+  color: var(--color-text-body);
+  border: 2px solid var(--color-border);
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  align-self: center;
+}
+
+.solo-share-result-btn:hover:not(:disabled) {
+  border-color: var(--color-primary-dark);
+  background-color: var(--color-primary);
+}
+
+/* ── Share toast notification ── */
+
+.solo-share-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--color-bg-card);
+  color: var(--color-text-body);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: solo-toast-fade 2s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes solo-toast-fade {
+  0% { opacity: 0; transform: translateX(-50%) translateY(0.5rem); }
+  10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-0.25rem); }
+}
+
 /* ── Per-question results list ── */
 
 .solo-results-list {
@@ -1372,6 +1418,10 @@
 
   .solo-result-row-points {
     font-size: 0.8rem;
+  }
+
+  .solo-share-result-btn {
+    min-height: 48px;
   }
 
   /* Touch-friendly action buttons */
