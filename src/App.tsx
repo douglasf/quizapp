@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useNavigate, useLocation } from 'react-router-dom'
 import Home from './components/Home'
 import QuizCreator from './components/QuizCreator'
 import QuizImport from './components/QuizImport'
@@ -19,6 +19,7 @@ function ShortLinkRedirect() {
 
 function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   // Plan §5.4.2 / Step 4: gate on isLoading so the login page does not flash
   // while AuthProvider is restoring the session via the refresh-token cookie.
   const { isLoading, isAuthenticated, user, logout } = useAuth()
@@ -38,8 +39,9 @@ function App() {
     <div className="app">
       {/* Plan §5.4.1 / Step 5 – global auth header.
           Shows the host's display name and a Log out action across all
-          authenticated routes so the persisted-session state is always visible. */}
-      {isAuthenticated && user && (
+          authenticated routes so the persisted-session state is always visible.
+          Hidden on /host since that screen may be projected on a TV. */}
+      {isAuthenticated && user && location.pathname !== '/host' && (
         <header className="app-header">
           <span className="app-header-greeting">
             {user.displayName}
