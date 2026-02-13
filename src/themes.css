@@ -78,6 +78,9 @@
   --color-chip-danger-bg: #3d1030;
   --color-chip-danger-text: #fbcfe8;
 
+  /* Vignette overlay */
+  --color-vignette: 220, 38, 38;
+
   color-scheme: dark;
 }
 
@@ -144,6 +147,9 @@
   --color-chip-text: #00fff7;
   --color-chip-danger-bg: #2a0018;
   --color-chip-danger-text: #ff2d7b;
+
+  /* Vignette overlay */
+  --color-vignette: 255, 45, 123;
 
   color-scheme: dark;
 }
@@ -212,6 +218,9 @@
   --color-chip-danger-bg: #3a0f0f;
   --color-chip-danger-text: #fca5a5;
 
+  /* Vignette overlay */
+  --color-vignette: 251, 146, 60;
+
   color-scheme: dark;
 }
 
@@ -279,6 +288,9 @@
   --color-chip-text: #fecdd3;
   --color-chip-danger-bg: #3a0f18;
   --color-chip-danger-text: #fda4af;
+
+  /* Vignette overlay */
+  --color-vignette: 236, 72, 153;
 
   color-scheme: dark;
 }

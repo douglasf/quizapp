@@ -64,6 +64,9 @@
   --color-chip-danger-bg: #fce7f3; /* Pink chip */
   --color-chip-danger-text: #9d174d;
 
+  /* Vignette overlay (RGB triplet for use with rgba()) */
+  --color-vignette: 220, 38, 38;
+
   /* Fonts */
   --font-display: 'Poppins', system-ui, sans-serif;
   --font-body: 'Outfit', system-ui, sans-serif;
@@ -123,6 +126,9 @@
     --color-chip-text: #e9d5ff;
     --color-chip-danger-bg: #3d1030;
     --color-chip-danger-text: #fbcfe8;
+
+    /* Vignette overlay */
+    --color-vignette: 220, 38, 38;
   }
 }
 

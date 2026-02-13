@@ -67,6 +67,17 @@ function PlayerGame() {
   const isMultiChoice = questionType === 'multi_choice';
   const hasImageOptions = Array.isArray(currentQuestion?.imageOptions) && currentQuestion.imageOptions.length > 0;
 
+  // Determine whether to show urgent countdown effects (vignette + heartbeat)
+  // Effects only show when timer is low, player hasn't answered yet, and question has enough time
+  const timeLimitSeconds = currentQuestion?.timeLimitSeconds ?? 0;
+  const shouldShowUrgentEffects =
+    timeRemaining !== null &&
+    timeRemaining <= 5 &&
+    timeRemaining > 0 &&
+    timeLimitSeconds > 5 &&
+    phase === 'answering' &&
+    selectedAnswer === null;
+
   // Send get_state message when connection opens so the host sends us the current game state
   useEffect(() => {
     if (
@@ -250,7 +261,7 @@ function PlayerGame() {
   }
 
   return (
-    <div className="page player-game">
+    <div className={`page player-game${shouldShowUrgentEffects ? ' player-game--countdown-urgent' : ''}`}>
       <div className="player-game-container">
         {/* Reconnection overlay */}
         {connectionStatus === 'reconnecting' && (
@@ -325,7 +336,7 @@ function PlayerGame() {
                     style={{ width: `${Math.max(0, Math.min(100, (timeRemaining / currentQuestion.timeLimitSeconds) * 100))}%` }}
                   />
                 </div>
-                <div className="player-timer-text">
+                <div className={`player-timer-text${shouldShowUrgentEffects ? ' player-timer-text--heartbeat' : ''}`}>
                   {timerExpiredRef.current ? "Time's up!" : `${Math.ceil(timeRemaining)}s`}
                 </div>
               </div>

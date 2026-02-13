@@ -133,6 +133,38 @@
   to { opacity: 0.5; }
 }
 
+@keyframes doom-pulse {
+  from { box-shadow: inset 0 0 60px 20px rgba(var(--color-vignette), 0.2); }
+  to   { box-shadow: inset 0 0 100px 40px rgba(var(--color-vignette), 0.5); }
+}
+
+@keyframes heartbeat-pulse {
+  0%   { transform: scale(1); }
+  14%  { transform: scale(1.25); }
+  28%  { transform: scale(1); }
+  42%  { transform: scale(1.15); }
+  56%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
+/* DOOM-style vignette when timer is critically low */
+.player-game--countdown-urgent::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 90;
+  box-shadow: inset 0 0 80px 30px rgba(var(--color-vignette), 0.4);
+  animation: doom-pulse 0.8s ease-in-out infinite alternate;
+}
+
+.player-timer-text--heartbeat {
+  animation: heartbeat-pulse 1s ease-in-out infinite;
+}
+
 /* Answer buttons grid — 2x2 */
 .answer-grid {
   display: grid;

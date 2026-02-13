@@ -8,6 +8,7 @@ import { useFullscreen } from '../hooks/useFullscreen';
 import { useFitText } from '../hooks/useFitText';
 import * as peerManager from '../utils/peerManager';
 import { calculateScore, isAnswerCorrect } from '../utils/scoring';
+import { ensureAudioContext, playCountdownBeep, cleanupAudio } from '../utils/countdownAudio';
 import { validateQuiz } from '../utils/quizValidator';
 import { getQuiz, ApiError } from '../utils/apiClient';
 import { applyTheme, saveTheme, getSavedTheme } from '../utils/theme';
@@ -41,6 +42,8 @@ interface QuestionPhaseProps {
   timeLimitSeconds: number;
   questionStartedAt: number;
   fullscreenButton: React.ReactNode;
+  countdownAudioEnabled: boolean;
+  onToggleAudio: () => void;
   onRevealAnswer: () => void;
   onShowAnswerSummary: () => void;
 }
@@ -58,6 +61,8 @@ function QuestionPhase({
   timeLimitSeconds,
   questionStartedAt,
   fullscreenButton,
+  countdownAudioEnabled,
+  onToggleAudio,
   onRevealAnswer,
   onShowAnswerSummary,
 }: QuestionPhaseProps) {
@@ -102,11 +107,37 @@ function QuestionPhase({
     return () => clearInterval(interval);
   }, [phase, questionStartedAt, timeLimitSeconds]);
 
+  // Track which countdown seconds have already played beeps (avoids duplicates on 100ms ticks)
+  const playedSecondsRef = useRef<Set<number>>(new Set());
+
+  // Reset played seconds when question changes
+  useEffect(() => {
+    playedSecondsRef.current.clear();
+  }, [questionIndex]);
+
   const timerProgress = phase === 'question'
     ? Math.max(0, Math.min(1, timeRemaining / timeLimitSeconds))
     : 0;
 
   const timerIsLow = timeRemaining <= 5 && phase === 'question';
+
+  const shouldShowUrgentEffects =
+    timeRemaining <= 5 &&
+    timeRemaining > 0 &&
+    timeLimitSeconds > 5 &&
+    phase === 'question' &&
+    answeredCount < totalPlayers;
+
+  // Play countdown beeps at each second during urgent phase
+  useEffect(() => {
+    if (shouldShowUrgentEffects && countdownAudioEnabled) {
+      const currentSecond = Math.ceil(timeRemaining);
+      if (currentSecond >= 1 && currentSecond <= 5 && !playedSecondsRef.current.has(currentSecond)) {
+        playCountdownBeep(currentSecond);
+        playedSecondsRef.current.add(currentSecond);
+      }
+    }
+  }, [timeRemaining, shouldShowUrgentEffects, countdownAudioEnabled]);
 
   // Slider-specific: correctValue and range for reveal
   const sliderCorrectValue = currentQuestion.correctValue ?? 50;
@@ -123,8 +154,17 @@ function QuestionPhase({
 
   return (
     <div className="page host-game">
-      <div className="host-game-container">
+      <div className={`host-game-container${shouldShowUrgentEffects ? ' host-game-container--countdown-urgent' : ''}`}>
         {fullscreenButton}
+        <button
+          type="button"
+          className="btn-audio-toggle"
+          onClick={onToggleAudio}
+          title={countdownAudioEnabled ? 'Mute countdown audio' : 'Enable countdown audio'}
+          aria-label={countdownAudioEnabled ? 'Mute countdown audio' : 'Enable countdown audio'}
+        >
+          {countdownAudioEnabled ? '\uD83D\uDD0A' : '\uD83D\uDD07'}
+        </button>
 
         {/* Timer bar — visible during question phase */}
         {phase === 'question' && (
@@ -135,7 +175,7 @@ function QuestionPhase({
                 style={{ width: `${timerProgress * 100}%` }}
               />
             </div>
-            <div className="host-timer-text">{Math.ceil(timeRemaining)}s</div>
+            <div className={`host-timer-text${shouldShowUrgentEffects ? ' host-timer-text--heartbeat' : ''}`}>{Math.ceil(timeRemaining)}s</div>
           </div>
         )}
 
@@ -335,6 +375,7 @@ function HostPage() {
   const [quizLoadError, setQuizLoadError] = useState<string | null>(null);
   const [showAnonymousStandingsModal, setShowAnonymousStandingsModal] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(getSavedTheme);
+  const [countdownAudioEnabled, setCountdownAudioEnabled] = useState(true);
   const currentThemeRef = useRef(currentTheme);
   const { isFullscreen, toggleFullscreen, isSupported: fullscreenSupported } = useFullscreen();
 
@@ -496,6 +537,13 @@ function HostPage() {
     }
   }, [navigate, gameCode, initGame, searchParams]);
 
+  // Clean up audio context on unmount
+  useEffect(() => {
+    return () => {
+      cleanupAudio();
+    };
+  }, []);
+
   const { joinBaseUrl, detecting: detectingIp, localIp, detectedIp, manualIp, setManualIp } = useHostUrl();
   const [ipInputValue, setIpInputValue] = useState('');
 
@@ -551,6 +599,7 @@ function HostPage() {
 
   const handleStartQuiz = useCallback(() => {
     if (connectedCount === 0 || !quiz) return;
+    ensureAudioContext();
     startQuiz();
 
     const question = quiz.questions[0];
@@ -1034,6 +1083,8 @@ function HostPage() {
         timeLimitSeconds={currentQuestion.timeLimitSeconds ?? DEFAULT_TIME_LIMIT_SECONDS}
         questionStartedAt={questionStartedAtRef.current}
         fullscreenButton={fullscreenButton}
+        countdownAudioEnabled={countdownAudioEnabled}
+        onToggleAudio={() => setCountdownAudioEnabled(prev => !prev)}
         onRevealAnswer={handleRevealAnswer}
         onShowAnswerSummary={handleShowAnswerSummary}
       />
