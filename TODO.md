@@ -14,9 +14,7 @@ _No pending chores._
 
 ## 🟠 ENHANCEMENTS
 
-- [ ] **F1: Make timer countdown much more noticeable with visual and audio effects** — When the timer for a question is about to run out, the timer number currently flashes subtly. Make this MUCH more noticeable on both host and player screens. Consider adding aggressive/frequent flashing or color changes (e.g., red background, larger size), sound effects or voice counting down the final seconds (e.g., "3... 2... 1..."), and additional visual animations to draw attention.
-
-- [ ] **F2: Improve answer clarity on player screen after timer ends for multi-choice questions** — For multi-choice questions, after the timer runs out, the player screen is not very clear about which answers are correct vs. which the player got correct. Currently there's only a slight color difference between correct answers and the answers the player selected correctly. Make this distinction MUCH clearer using visual indicators beyond just color (e.g., checkmarks, icons, badges, borders, patterns, or other visual cues that work for colorblind users).
+_No pending enhancements._
 
 ---
 
@@ -89,6 +87,10 @@ _No pending chores._
     - [x] Remove or de-emphasize any other low-priority UI elements to reduce visual noise
   - **Scope**: Small to medium — primarily layout and component reorganization. May involve splitting shared state between the host-quiz and import-quiz screens
   - **Completed in**: Commit `d165198`
+
+### Enhancements
+- [x] **F1: Make timer countdown much more noticeable with visual and audio effects** — Added urgent countdown effects with vignette overlay, heartbeat animation, and audio beeps on both host and player screens _(Completed in commit acbb9a4)_
+- [x] **F2: Improve answer clarity on player screen after timer ends for multi-choice questions** — Added distinct status labels (Correct/Missed/Wrong), circular badge indicators, staggered slide-in and pulse animations, and improved border/shadow/opacity treatments across correct-selected, correct-missed, wrong-selected, and neutral states _(Completed in commit 1105de3)_
 
 ### UI/UX & Polish
 - [x] Landscape layout for TV projection (2-column grid)
