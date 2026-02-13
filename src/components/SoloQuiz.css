@@ -1,0 +1,1441 @@
+/* ==========================================================================
+   SoloQuiz — host-less solo play mode
+   ========================================================================== */
+
+/* Layout */
+.solo-quiz {
+  justify-content: flex-start;
+  padding: 1rem;
+}
+
+.solo-quiz-container {
+  width: 100%;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* ── Loading phase ── */
+
+.solo-loading {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.solo-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary-dark);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.solo-loading p {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+}
+
+/* ── Error phase ── */
+
+.solo-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.solo-error-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--color-error-bg);
+  border: 2px solid var(--color-error-border);
+  color: var(--color-error-text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.solo-error h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.solo-error p {
+  max-width: 20rem;
+}
+
+/* ── Ready phase ── */
+
+.solo-ready {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.solo-ready-title {
+  font-size: 1.75rem;
+  margin: 0;
+  word-break: break-word;
+}
+
+.solo-ready-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.solo-ready-meta-separator {
+  opacity: 0.5;
+}
+
+.solo-ready-description {
+  max-width: 20rem;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  margin-top: 0.5rem;
+}
+
+.solo-start-btn {
+  margin-top: 1rem;
+  font-size: 1.1rem;
+  padding: 0.875rem 2.5rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Question Phase
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Question section layout ── */
+
+.solo-question-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  outline: none; /* Suppress focus outline when programmatically focused */
+}
+
+.solo-question-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.solo-question-counter {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.solo-question-text {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+  color: var(--color-text-dark);
+}
+
+.solo-question-image {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.solo-question-image img {
+  max-width: 100%;
+  max-height: 30vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+
+/* ── Timer ── */
+
+.solo-timer {
+  margin-bottom: 0.75rem;
+}
+
+.solo-timer-track {
+  height: 6px;
+  background-color: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.solo-timer-fill {
+  height: 100%;
+  background-color: var(--color-primary-dark);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+.solo-timer--low .solo-timer-fill {
+  background-color: var(--color-error);
+}
+
+.solo-timer--expired .solo-timer-fill {
+  width: 0% !important;
+  background-color: var(--color-error);
+}
+
+.solo-timer-text {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-text-body);
+}
+
+.solo-timer--low .solo-timer-text {
+  color: var(--color-error);
+  animation: solo-timer-pulse 0.5s ease-in-out infinite alternate;
+}
+
+.solo-timer--expired .solo-timer-text {
+  color: var(--color-error);
+  animation: none;
+}
+
+@keyframes solo-timer-pulse {
+  from { opacity: 1; }
+  to { opacity: 0.5; }
+}
+
+@keyframes solo-heartbeat {
+  0%   { transform: scale(1); }
+  14%  { transform: scale(1.25); }
+  28%  { transform: scale(1); }
+  42%  { transform: scale(1.15); }
+  56%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
+.solo-timer-text--heartbeat {
+  animation: solo-heartbeat 1s ease-in-out infinite;
+}
+
+/* DOOM-style vignette when timer is critically low */
+@keyframes solo-doom-pulse {
+  from { box-shadow: inset 0 0 60px 20px rgba(var(--color-vignette), 0.2); }
+  to   { box-shadow: inset 0 0 100px 40px rgba(var(--color-vignette), 0.5); }
+}
+
+.solo-quiz--countdown-urgent::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 90;
+  box-shadow: inset 0 0 80px 30px rgba(var(--color-vignette), 0.4);
+  animation: solo-doom-pulse 0.8s ease-in-out infinite alternate;
+}
+
+/* ── Answer grid (MC / TF) ── */
+
+.solo-answer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  flex: 1;
+  margin-bottom: 1rem;
+}
+
+/* True/False: single row of 2 tall buttons */
+.solo-answer-grid--two {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* Image option grid */
+.solo-answer-grid--images {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+/* ── MC / TF answer buttons ── */
+
+.solo-answer-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border: 3px solid transparent;
+  border-radius: 1rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 80px;
+  transition: transform 0.1s ease, opacity 0.2s ease, border-color 0.2s ease;
+  word-break: break-word;
+  text-align: center;
+}
+
+.solo-answer-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.solo-answer-btn:focus-visible {
+  outline: 3px solid var(--color-text-dark);
+  outline-offset: 2px;
+}
+
+.solo-answer-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Color variants */
+.solo-answer-btn--red { background-color: var(--color-answer-red); color: var(--color-answer-red-text); }
+.solo-answer-btn--blue { background-color: var(--color-answer-blue); color: var(--color-answer-blue-text); }
+.solo-answer-btn--yellow { background-color: var(--color-answer-yellow); color: var(--color-answer-yellow-text); }
+.solo-answer-btn--green { background-color: var(--color-answer-green); color: var(--color-answer-green-text); }
+
+/* Button label (A, B, C, D) */
+.solo-answer-btn-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+  opacity: 0.8;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.solo-answer-btn--red .solo-answer-btn-label { color: var(--color-answer-red-text); }
+.solo-answer-btn--blue .solo-answer-btn-label { color: var(--color-answer-blue-text); }
+.solo-answer-btn--yellow .solo-answer-btn-label { color: var(--color-answer-yellow-text); }
+.solo-answer-btn--green .solo-answer-btn-label { color: var(--color-answer-green-text); }
+
+/* Selected & disabled states */
+.solo-answer-btn--selected {
+  border-color: var(--color-text-dark);
+  box-shadow: 0 0 0 3px rgba(88, 28, 135, 0.3);
+}
+
+.solo-answer-btn--disabled {
+  opacity: 0.4;
+}
+
+/* Button text (option text) */
+.solo-answer-btn-text {
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+
+/* Image answer options */
+.solo-answer-btn--image {
+  padding: 0;
+  min-height: 120px;
+  overflow: hidden;
+  position: relative;
+  background-color: transparent;
+}
+
+.solo-answer-btn--image .solo-answer-btn-label {
+  margin-bottom: 0;
+}
+
+/* Badge label on image buttons — circular overlay */
+.solo-answer-btn-label--badge {
+  position: absolute;
+  top: 0.375rem;
+  left: 0.375rem;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.85rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Badge colors per answer color */
+.solo-answer-btn--red .solo-answer-btn-label--badge { background-color: var(--color-answer-red); color: var(--color-answer-red-text); }
+.solo-answer-btn--blue .solo-answer-btn-label--badge { background-color: var(--color-answer-blue); color: var(--color-answer-blue-text); }
+.solo-answer-btn--yellow .solo-answer-btn-label--badge { background-color: var(--color-answer-yellow); color: var(--color-answer-yellow-text); }
+.solo-answer-btn--green .solo-answer-btn-label--badge { background-color: var(--color-answer-green); color: var(--color-answer-green-text); }
+
+.solo-answer-btn--image.solo-answer-btn--selected {
+  border-color: var(--color-text-dark);
+  box-shadow: 0 0 0 3px rgba(88, 28, 135, 0.4);
+}
+
+/* ── Slider input ── */
+
+.solo-slider-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.solo-slider-value {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin-bottom: 1rem;
+}
+
+.solo-slider-value--submitted {
+  color: var(--color-success-darker);
+}
+
+.solo-slider-input {
+  width: 100%;
+  max-width: 20rem;
+  height: 12px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--color-border);
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+}
+
+.solo-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-dark);
+  border: 3px solid var(--color-bg-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.solo-slider-input::-moz-range-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-dark);
+  border: 3px solid var(--color-bg-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.solo-slider-scale {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 20rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.solo-slider-submit {
+  margin-top: 1.5rem;
+  font-size: 1.1rem;
+  padding: 0.875rem 2rem;
+  min-width: 12rem;
+}
+
+.solo-slider-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.solo-slider-locked-label {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* ── Multi-choice checkboxes ── */
+
+.solo-answer-grid--mc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  margin-bottom: 1rem;
+}
+
+.solo-mc-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border: 3px solid var(--color-border);
+  background-color: var(--color-bg-card);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.solo-mc-label:active {
+  transform: scale(0.98);
+}
+
+.solo-mc-label--checked {
+  border-color: var(--color-primary-dark);
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.3);
+}
+
+.solo-mc-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--color-primary-dark);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.solo-mc-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+.solo-mc-submit {
+  margin-top: 0.5rem;
+  font-size: 1.05rem;
+  padding: 0.875rem 2rem;
+  align-self: center;
+  min-width: 14rem;
+}
+
+.solo-mc-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.solo-mc-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.solo-mc-locked-icon {
+  font-size: 3rem;
+}
+
+.solo-mc-locked-label {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* Multi-choice image grid */
+.solo-answer-grid--mc-images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.solo-mc-label--image {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0;
+  min-height: 100px;
+  position: relative;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+.solo-mc-label--image .solo-mc-checkbox {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
+}
+
+.solo-mc-image-letter {
+  position: absolute;
+  bottom: 0.375rem;
+  left: 0.375rem;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.solo-mc-check-badge {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary-dark);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.solo-answer-grid--mc-images .solo-mc-submit {
+  grid-column: 1 / -1;
+}
+
+.solo-answer-grid--mc-images .solo-mc-locked {
+  grid-column: 1 / -1;
+}
+
+/* ── Submission / expiry feedback ── */
+
+.solo-submit-feedback {
+  display: block;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  padding: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Reveal Phase
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Reveal entrance animations ── */
+
+@keyframes solo-revealSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes solo-correctPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* ── Reveal section layout ── */
+
+.solo-reveal-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* During reveal, don't let the answer grid consume all flex space —
+   ensure points + button stay visible */
+.solo-answer-grid--reveal {
+  flex: 0 1 auto;
+}
+
+/* ── MC / TF reveal button states ── */
+
+.solo-answer-btn--correct-answer {
+  border-color: var(--color-success-darker);
+  box-shadow: 0 0 0 3px var(--color-success), 0 4px 12px rgba(134, 239, 172, 0.4);
+  opacity: 1 !important;
+}
+
+.solo-answer-btn--wrong-answer {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px var(--color-error);
+  opacity: 0.8;
+}
+
+.solo-answer-btn--disabled-other {
+  opacity: 0.4;
+}
+
+/* ── Multi-choice reveal options ── */
+
+.solo-reveal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 0 1 auto;
+  margin-bottom: 1rem;
+}
+
+/* Image grid variant for multi-choice reveal */
+.solo-reveal-options--images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.solo-reveal-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border: 3px solid transparent;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  transition: opacity 0.2s ease;
+  animation: solo-revealSlideIn 0.3s ease-out both;
+}
+
+.solo-reveal-option-text {
+  flex: 1;
+  word-break: break-word;
+}
+
+/* Image option: card layout */
+.solo-reveal-option--image {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0;
+  min-height: 100px;
+  position: relative;
+  overflow: hidden;
+  background-color: transparent;
+}
+
+/* Letter badge on image reveal options */
+.solo-reveal-option-letter-badge {
+  position: absolute;
+  bottom: 0.375rem;
+  left: 0.375rem;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── Multi-choice option state variants ── */
+
+.solo-reveal-option--correct-selected {
+  background-color: var(--color-success-bg);
+  border: 4px solid var(--color-success-darker);
+  color: var(--color-success-text);
+  box-shadow: 0 0 0 2px var(--color-success), 0 4px 12px rgba(134, 239, 172, 0.3);
+  animation: solo-revealSlideIn 0.3s ease-out both, solo-correctPulse 0.3s ease-in-out 0.35s;
+}
+
+.solo-reveal-option--correct-missed {
+  background-color: var(--color-success-bg);
+  border: 3px dashed var(--color-success);
+  color: var(--color-success-text);
+  opacity: 0.85;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.04) 8px,
+    rgba(255, 255, 255, 0.04) 16px
+  );
+}
+
+.solo-reveal-option--wrong-selected {
+  background-color: var(--color-error-bg);
+  border: 3px solid var(--color-error);
+  color: var(--color-error-text, var(--color-text-body));
+  box-shadow: 0 0 0 2px var(--color-error-border);
+}
+
+.solo-reveal-option--neutral {
+  background-color: var(--color-bg-card);
+  border-color: var(--color-border);
+  opacity: 0.4;
+}
+
+/* ── Reveal status labels ── */
+
+.solo-reveal-status {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  flex-shrink: 0;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.solo-reveal-status--correct {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+
+.solo-reveal-status--missed {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+  opacity: 0.85;
+}
+
+.solo-reveal-status--wrong {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+}
+
+/* ── Reveal icon badges ── */
+
+.solo-reveal-badge {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-success-darker);
+  flex-shrink: 0;
+}
+
+.solo-reveal-badge--correct-hit {
+  color: #fff;
+  background-color: var(--color-success-darker);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.solo-reveal-badge--correct-miss {
+  color: var(--color-success-text);
+  background-color: transparent;
+  border: 2px solid var(--color-success);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.solo-reveal-badge--wrong {
+  color: var(--color-error);
+}
+
+/* ── Image reveal option badge/status overrides ── */
+
+.solo-reveal-option--image .solo-reveal-badge {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  z-index: 2;
+}
+
+.solo-reveal-option--image .solo-reveal-badge--correct-hit {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.solo-reveal-option--image .solo-reveal-badge--correct-miss {
+  background-color: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.solo-reveal-option--image .solo-reveal-badge--wrong {
+  color: #fff;
+  background-color: var(--color-error);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.solo-reveal-option--image .solo-reveal-status {
+  position: absolute;
+  bottom: 0.375rem;
+  right: 0.375rem;
+  z-index: 2;
+  margin-left: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  max-width: calc(100% - 2.5rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Slider reveal ── */
+
+.solo-slider-reveal {
+  flex: 0 1 auto;
+  padding: 1.5rem;
+  background-color: var(--color-bg-card);
+  border-radius: 1rem;
+  margin-bottom: 1rem;
+}
+
+.solo-slider-reveal-values {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.solo-slider-reveal-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.solo-slider-reveal-label {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.solo-slider-reveal-value {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--color-text-dark);
+}
+
+.solo-slider-reveal-value--correct {
+  color: var(--color-success-text);
+}
+
+.solo-slider-reveal-closeness {
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.solo-slider-reveal-closeness--perfect {
+  color: var(--color-success-text);
+  font-weight: 600;
+}
+
+/* ── Points display ── */
+
+.solo-points-display {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+
+.solo-points-display--positive {
+  color: var(--color-success-text);
+  background-color: var(--color-success-bg);
+}
+
+.solo-points-display--zero {
+  color: var(--color-text-muted);
+  background-color: var(--color-bg-card);
+}
+
+/* ── Running total ── */
+
+.solo-running-total {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
+/* ── Next question / See results button ── */
+
+.solo-next-btn {
+  align-self: center;
+  font-size: 1.1rem;
+  padding: 0.875rem 2.5rem;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Finished Phase
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.solo-finished-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0;
+  overflow-y: auto;
+}
+
+/* ── Final score display ── */
+
+.solo-final-score {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  margin: 0;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.solo-final-score-label {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  margin: 0.25rem 0 1.5rem;
+}
+
+/* ── Per-question results list ── */
+
+.solo-results-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+  list-style: none; /* semantic <ol> without numbers */
+}
+
+.solo-result-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+
+.solo-result-row--correct {
+  border-color: var(--color-success);
+}
+
+.solo-result-row--incorrect {
+  border-color: var(--color-error-border);
+}
+
+/* Status indicator (checkmark / X) */
+.solo-result-row-status {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.solo-result-row-status--correct {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-darker);
+  border: 2px solid var(--color-success);
+}
+
+.solo-result-row-status--incorrect {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  border: 2px solid var(--color-error-border);
+}
+
+/* Question text (truncated with ellipsis) */
+.solo-result-row-question-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-body);
+  font-weight: 500;
+}
+
+/* Points earned */
+.solo-result-row-points {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.solo-result-row-points--positive {
+  color: var(--color-success-darker);
+}
+
+.solo-result-row-points--zero {
+  color: var(--color-text-muted);
+}
+
+/* ── Action buttons ── */
+
+.solo-action-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 16rem;
+  flex-shrink: 0;
+}
+
+.solo-action-buttons .btn {
+  width: 100%;
+  font-size: 1.05rem;
+  padding: 0.875rem 2rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Phase transitions — smooth fade-in between phases
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes solo-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.solo-loading,
+.solo-error,
+.solo-ready,
+.solo-question-section,
+.solo-reveal-section,
+.solo-finished-section {
+  animation: solo-fadeIn 0.3s ease-out both;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Accessibility — focus & reduced-motion
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Screen-reader only text (visually hidden but announced) */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .solo-loading,
+  .solo-error,
+  .solo-ready,
+  .solo-question-section,
+  .solo-reveal-section,
+  .solo-finished-section,
+  .solo-reveal-option,
+  .solo-spinner,
+  .solo-timer-text--heartbeat,
+  .solo-quiz--countdown-urgent::after {
+    animation: none !important;
+  }
+
+  .solo-timer-fill {
+    transition: none;
+  }
+
+  .solo-answer-btn,
+  .solo-mc-label {
+    transition: none;
+  }
+}
+
+/* Multi-choice label focus-visible for keyboard navigation */
+.solo-mc-label:focus-within {
+  outline: 3px solid var(--color-text-dark);
+  outline-offset: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Responsive
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Tablet — intermediate sizing */
+@media (max-width: 768px) {
+  .solo-quiz-container {
+    max-width: 100%;
+  }
+
+  .solo-slider-reveal-values {
+    gap: 1.5rem;
+  }
+
+  .solo-slider-reveal-value {
+    font-size: 2rem;
+  }
+
+  .solo-points-display {
+    font-size: 1.25rem;
+    padding: 0.875rem;
+  }
+}
+
+/* Mobile portrait */
+@media (max-width: 480px) {
+  .solo-quiz {
+    padding: 0.75rem;
+  }
+
+  .solo-ready-title {
+    font-size: 1.5rem;
+  }
+
+  .solo-question-text {
+    font-size: 1.1rem;
+  }
+
+  .solo-answer-grid {
+    gap: 0.5rem;
+  }
+
+  /* Ensure touch-friendly 48px minimum tap targets */
+  .solo-answer-btn {
+    min-height: 100px;
+    font-size: 0.95rem;
+    padding: 0.75rem;
+  }
+
+  .solo-answer-btn .solo-answer-btn-label {
+    font-size: 1rem;
+  }
+
+  .solo-answer-btn--image {
+    min-height: 90px;
+  }
+
+  /* Touch-friendly multi-choice labels (min 48px height) */
+  .solo-mc-label {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.95rem;
+    min-height: 48px;
+  }
+
+  .solo-mc-checkbox {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .solo-mc-submit {
+    min-width: 12rem;
+    min-height: 48px;
+  }
+
+  .solo-mc-label--image {
+    min-height: 80px;
+  }
+
+  .solo-reveal-option--image {
+    min-height: 80px;
+  }
+
+  /* Smaller status labels on image options for narrow screens */
+  .solo-reveal-option--image .solo-reveal-status {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.375rem;
+  }
+
+  .solo-question-image img {
+    max-height: 25vh;
+  }
+
+  /* Bigger slider thumb for touch on mobile */
+  .solo-slider-input::-webkit-slider-thumb {
+    width: 48px;
+    height: 48px;
+  }
+
+  .solo-slider-input::-moz-range-thumb {
+    width: 48px;
+    height: 48px;
+  }
+
+  .solo-slider-submit {
+    min-height: 48px;
+  }
+
+  .solo-final-score {
+    font-size: 2rem;
+  }
+
+  .solo-result-row {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
+  }
+
+  .solo-result-row-status {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.8rem;
+  }
+
+  .solo-result-row-points {
+    font-size: 0.8rem;
+  }
+
+  /* Touch-friendly action buttons */
+  .solo-action-buttons .btn {
+    min-height: 48px;
+  }
+
+  .solo-start-btn {
+    min-height: 48px;
+  }
+
+  .solo-next-btn {
+    min-height: 48px;
+  }
+}
+
+/* Landscape phones — single row for MC */
+@media (max-height: 480px) and (orientation: landscape) {
+  .solo-answer-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .solo-answer-grid--two {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .solo-answer-grid--mc {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .solo-mc-label {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .solo-answer-btn {
+    min-height: 60px;
+  }
+
+  .solo-answer-grid--images {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .solo-answer-grid--mc-images {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .solo-answer-btn--image {
+    min-height: 60px;
+  }
+
+  .solo-reveal-option--image {
+    min-height: 60px;
+  }
+
+  /* Compact status labels in landscape */
+  .solo-reveal-option--image .solo-reveal-status {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.375rem;
+  }
+
+  .solo-question-image img {
+    max-height: 20vh;
+  }
+}

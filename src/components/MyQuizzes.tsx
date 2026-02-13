@@ -30,6 +30,7 @@ function MyQuizzes() {
   // Per-quiz action state
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedSoloId, setCopiedSoloId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   // Migration banner state
@@ -111,6 +112,15 @@ function MyQuizzes() {
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopiedId(quizId)
       setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
+
+  // ── Copy solo link ──
+  function handleCopySoloLink(quizId: string) {
+    const soloUrl = `${window.location.origin}/quizapp/#/solo/${quizId}`
+    navigator.clipboard.writeText(soloUrl).then(() => {
+      setCopiedSoloId(quizId)
+      setTimeout(() => setCopiedSoloId(null), 2000)
     })
   }
 
@@ -340,6 +350,14 @@ function MyQuizzes() {
                       onClick={() => handleShare(quiz.id)}
                     >
                       {copiedId === quiz.id ? 'Copied!' : 'Share'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => handleCopySoloLink(quiz.id)}
+                      disabled={copiedSoloId === quiz.id}
+                    >
+                      {copiedSoloId === quiz.id ? 'Copied!' : 'Solo Link'}
                     </button>
                     {confirmDeleteId === quiz.id ? (
                       <div className="delete-confirm">

@@ -8,6 +8,7 @@ import PlayerGame from './components/PlayerGame'
 import Login from './components/Login'
 import Signup from './components/Signup'
 import MyQuizzes from './components/MyQuizzes'
+import SoloQuiz from './components/SoloQuiz'
 import { useAuth } from './hooks/useAuth'
 import './App.css'
 
@@ -68,6 +69,7 @@ function App() {
         <Route path="/host" element={<HostPage />} />
         <Route path="/join/:gameCode?" element={<PlayerJoin />} />
         <Route path="/play" element={<PlayerGame />} />
+        <Route path="/solo/:quizId" element={<SoloQuiz />} />
       </Routes>
     </div>
   )

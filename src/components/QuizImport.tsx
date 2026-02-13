@@ -24,6 +24,7 @@ function QuizImport() {
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [shortLinkCopied, setShortLinkCopied] = useState(false)
+  const [soloLinkCopied, setSoloLinkCopied] = useState(false)
   const [linkWarning, setLinkWarning] = useState('')
   const [linkLoading, setLinkLoading] = useState(false)
 
@@ -227,6 +228,15 @@ function QuizImport() {
     })
   }
 
+  function handleShareSoloLink() {
+    if (!createdQuizCloudId) return
+    const soloUrl = `${window.location.origin}/quizapp/#/solo/${createdQuizCloudId}`
+    navigator.clipboard.writeText(soloUrl).then(() => {
+      setSoloLinkCopied(true)
+      setTimeout(() => setSoloLinkCopied(false), 2000)
+    })
+  }
+
   function handleHostCreatedQuiz() {
     if (!createdQuiz) return
     // Move quiz to imported key so host lobby can pick it up
@@ -426,6 +436,25 @@ function QuizImport() {
                     onClick={handleShareShortLink}
                   >
                     {shortLinkCopied ? 'Copied!' : 'Copy Short Link'}
+                  </button>
+                </div>
+              )}
+
+              {createdQuizCloudId && (
+                <div className="share-link-option">
+                  <div className="share-link-info">
+                    <span className="share-link-label">Solo play link</span>
+                    <span className="share-link-badge share-link-badge-secondary">New</span>
+                    <p className="share-link-description">
+                      Friends can take this quiz on their own — no host needed.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleShareSoloLink}
+                  >
+                    {soloLinkCopied ? 'Copied!' : 'Copy Solo Link'}
                   </button>
                 </div>
               )}
