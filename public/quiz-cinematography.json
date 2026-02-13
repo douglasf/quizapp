@@ -1,0 +1,237 @@
+{
+  "$schema": "./quiz-schema.json",
+  "title": "The Art of Cinematography: Movies, Techniques & Legends",
+  "createdAt": "2026-02-13T12:00:00.000Z",
+  "questions": [
+    {
+      "type": "multiple_choice",
+      "text": "What cinematographic technique involves tilting the camera on its roll axis to create a sense of unease, disorientation, or psychological tension?",
+      "image": "https://images.unsplash.com/photo-1585951237318-9ea5e175b891?w=800&q=80",
+      "options": [
+        "Dolly zoom",
+        "Dutch angle",
+        "Crane shot",
+        "Whip pan"
+      ],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "true_false",
+      "text": "Legendary cinematographer Roger Deakins has won more than five Academy Awards for Best Cinematography.",
+      "options": ["False", "True"],
+      "correctIndex": 0,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "slider",
+      "text": "In what year was Orson Welles' 'Citizen Kane' — widely praised for Gregg Toland's groundbreaking deep focus cinematography — first released?",
+      "image": "https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=800&q=80",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 1930,
+      "sliderMax": 1960,
+      "correctValue": 1941,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of the following are standard components of a classic three-point lighting setup used in film and television?",
+      "image": "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=800&q=80",
+      "options": [
+        "Key light",
+        "Fill light",
+        "Back light (rim/hair light)",
+        "Bounce light",
+        "Practical light",
+        "Ambient light"
+      ],
+      "correctIndex": 0,
+      "correctIndices": [0, 1, 2],
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multiple_choice",
+      "text": "The 'dolly zoom' — a disorienting effect where the background appears to shift while the subject stays the same size — was famously pioneered in which Alfred Hitchcock film?",
+      "options": [
+        "Psycho (1960)",
+        "Rear Window (1954)",
+        "Vertigo (1958)",
+        "North by Northwest (1959)"
+      ],
+      "correctIndex": 2,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "true_false",
+      "text": "Stanley Kubrick's 'Barry Lyndon' (1975) used specially modified f/0.7 Zeiss lenses — originally developed for NASA — to film interior scenes lit entirely by candlelight.",
+      "image": "https://images.unsplash.com/photo-1603775020644-eb8decd79994?w=800&q=80",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "multiple_choice",
+      "text": "What is the standard aspect ratio commonly referred to as 'anamorphic widescreen' or 'CinemaScope' in theatrical cinema?",
+      "options": [
+        "1.85:1",
+        "2.39:1",
+        "1.33:1 (Academy ratio)",
+        "1.78:1 (16:9)"
+      ],
+      "correctIndex": 1,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "slider",
+      "text": "What is the standard frame rate (in frames per second) used for theatrical cinema projection worldwide?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 10,
+      "sliderMax": 60,
+      "correctValue": 24,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of the following films were photographed by the acclaimed cinematographer Roger Deakins, ASC, BSC?",
+      "options": [
+        "The Shawshank Redemption (1994)",
+        "No Country for Old Men (2007)",
+        "1917 (2019)",
+        "The Revenant (2015)",
+        "Blade Runner 2049 (2017)",
+        "Inception (2010)"
+      ],
+      "correctIndex": 0,
+      "correctIndices": [0, 1, 2, 4],
+      "timeLimitSeconds": 30
+    },
+    {
+      "type": "true_false",
+      "text": "The '180-degree rule' in cinematography is a guideline that ensures two characters in a conversation maintain consistent left-right positions on screen between cuts.",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 15
+    },
+    {
+      "type": "multiple_choice",
+      "text": "In cinematography and painting, what does the term 'chiaroscuro' refer to?",
+      "image": "https://images.unsplash.com/photo-1518834107812-67b0b7c58434?w=800&q=80",
+      "options": [
+        "Rapid camera movement through a scene",
+        "The bold use of strong contrast between light and dark areas",
+        "A type of intentional lens flare effect",
+        "Adjusting color temperature between warm and cool tones"
+      ],
+      "correctIndex": 1,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "slider",
+      "text": "What focal length (in millimeters) is considered a 'normal' lens on a standard 35mm film camera — closely approximating the human eye's natural field of view?",
+      "image": "https://images.unsplash.com/photo-1617005082133-548c4dd27f35?w=800&q=80",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 20,
+      "sliderMax": 100,
+      "correctValue": 50,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of the following are actual types of camera movement used in cinematography? (Be careful — some are related film terms but NOT camera movements.)",
+      "options": [
+        "Dolly (tracking)",
+        "Steadicam",
+        "Bokeh",
+        "Crane (jib)",
+        "Tilt",
+        "Mise-en-scène"
+      ],
+      "correctIndex": 0,
+      "correctIndices": [0, 1, 3, 4],
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "true_false",
+      "text": "Emmanuel Lubezki ('Chivo') won three consecutive Academy Awards for Best Cinematography for 'Gravity' (2014), 'Birdman' (2015), and 'The Revenant' (2016) — an unprecedented achievement.",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "multiple_choice",
+      "text": "Who served as the Director of Photography on Ridley Scott's original 'Blade Runner' (1982), creating its iconic neon-drenched, rain-soaked noir aesthetic?",
+      "image": "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80",
+      "options": [
+        "Vittorio Storaro",
+        "Roger Deakins",
+        "Jordan Cronenweth",
+        "Janusz Kamiński"
+      ],
+      "correctIndex": 2,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "slider",
+      "text": "In what year did 'The Wizard of Oz' — famous for its revolutionary transition from sepia-toned Kansas to vibrant three-strip Technicolor in Oz — premiere in theaters?",
+      "options": [],
+      "correctIndex": 0,
+      "sliderMin": 1920,
+      "sliderMax": 1960,
+      "correctValue": 1939,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of the following cinematographers have won at least one Academy Award for Best Cinematography?",
+      "options": [
+        "Robert Richardson (JFK, Hugo)",
+        "Vittorio Storaro (Apocalypse Now)",
+        "Bradford Young (Arrival)",
+        "Janusz Kamiński (Schindler's List)",
+        "Hoyte van Hoytema (Dunkirk)",
+        "Emmanuel Lubezki (Gravity, Birdman)"
+      ],
+      "correctIndex": 0,
+      "correctIndices": [0, 1, 3, 5],
+      "timeLimitSeconds": 30
+    },
+    {
+      "type": "true_false",
+      "text": "IMAX 15/70 film uses frames that are approximately 10 times larger in area than standard 35mm film frames, resulting in significantly higher resolution and image clarity.",
+      "image": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=800&q=80",
+      "options": ["False", "True"],
+      "correctIndex": 1,
+      "timeLimitSeconds": 20
+    },
+    {
+      "type": "multiple_choice",
+      "text": "What cinematographic technique was used in Alejandro González Iñárritu's 'Birdman' (2014) to create the illusion that the entire film unfolds as a single continuous take?",
+      "options": [
+        "Extensive use of jump cuts",
+        "Hidden cuts seamlessly stitched within long takes",
+        "Time-lapse photography with motion interpolation",
+        "Split-screen compositing"
+      ],
+      "correctIndex": 1,
+      "timeLimitSeconds": 25
+    },
+    {
+      "type": "multi_choice",
+      "text": "Which of the following films are celebrated for being shot predominantly using natural light, with minimal or no artificial lighting setups?",
+      "image": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=800&q=80",
+      "options": [
+        "Barry Lyndon (1975)",
+        "The Revenant (2015)",
+        "Transformers: Age of Extinction (2014)",
+        "Days of Heaven (1978)",
+        "Fast & Furious 7 (2015)"
+      ],
+      "correctIndex": 0,
+      "correctIndices": [0, 1, 3],
+      "timeLimitSeconds": 30
+    }
+  ]
+}
