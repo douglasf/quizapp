@@ -561,7 +561,7 @@ function PlayerGame() {
                     const isCorrect = correctSet.has(idx);
                     const isSelected = playerSet.has(idx);
                     const imageUrl = revealHasImages ? (currentQuestion.imageOptions ?? [])[idx] : undefined;
-                    let optionClass = 'reveal-option';
+                    let optionClass = 'reveal-option reveal-option--revealed';
                     if (imageUrl) optionClass += ' reveal-option--image';
                     if (isCorrect && isSelected) {
                       optionClass += ' reveal-option--correct-selected';
@@ -573,16 +573,18 @@ function PlayerGame() {
                       optionClass += ' reveal-option--neutral';
                     }
 
+                    const imageStyles = imageUrl ? {
+                      backgroundImage: `url(${imageUrl})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center center',
+                      backgroundRepeat: 'no-repeat',
+                    } : {};
+
                     return (
                       <div
                         key={`mc-reveal-${ANSWER_LABELS[idx] ?? idx}`}
                         className={optionClass}
-                        style={imageUrl ? {
-                          backgroundImage: `url(${imageUrl})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center center',
-                          backgroundRepeat: 'no-repeat',
-                        } : undefined}
+                        style={{ animationDelay: `${idx * 0.08}s`, ...imageStyles }}
                       >
                         {!imageUrl && (
                           <span className="reveal-option-text">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}. {option}</span>
@@ -590,7 +592,17 @@ function PlayerGame() {
                         {imageUrl && (
                           <span className="reveal-option-letter--badge">{ANSWER_LABELS[idx] ?? String.fromCharCode(65 + idx)}</span>
                         )}
-                        {isCorrect && <span className="reveal-badge">{'\u2713'}</span>}
+                        {isCorrect && isSelected && (
+                          <span className="reveal-status reveal-status--correct">{'\u2713'} Correct</span>
+                        )}
+                        {isCorrect && !isSelected && (
+                          <span className="reveal-status reveal-status--missed">Missed</span>
+                        )}
+                        {!isCorrect && isSelected && (
+                          <span className="reveal-status reveal-status--wrong">{'\u2717'} Wrong</span>
+                        )}
+                        {isCorrect && isSelected && <span className="reveal-badge reveal-badge--correct-hit">{'\u2713'}</span>}
+                        {isCorrect && !isSelected && <span className="reveal-badge reveal-badge--correct-miss">!</span>}
                         {!isCorrect && isSelected && <span className="reveal-badge reveal-badge--wrong">{'\u2717'}</span>}
                       </div>
                     );
